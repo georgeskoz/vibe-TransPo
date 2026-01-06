@@ -82,15 +82,23 @@ export default function HomeScreen() {
             className="px-5 mt-4"
           >
             <Pressable
-              onPress={() => router.push('/booking')}
+              onPress={() => {
+                if (serviceType === 'taxi') router.push('/booking');
+                else if (serviceType === 'courier') router.push('/courier');
+                else if (serviceType === 'food') router.push('/food');
+              }}
               className="bg-white/5 border border-white/10 rounded-2xl p-4 flex-row items-center"
             >
               <View className="w-10 h-10 bg-amber-500/20 rounded-full items-center justify-center mr-3">
                 <Search size={20} color="#FFB800" />
               </View>
               <View className="flex-1">
-                <Text className="text-white text-lg font-medium">{t('whereToGo')}</Text>
-                <Text className="text-gray-500 text-sm mt-0.5">{t('currentLocation')}</Text>
+                <Text className="text-white text-lg font-medium">
+                  {serviceType === 'taxi' ? t('whereToGo') : serviceType === 'courier' ? t('sendPackage') : t('orderFood')}
+                </Text>
+                <Text className="text-gray-500 text-sm mt-0.5">
+                  {serviceType === 'taxi' ? t('currentLocation') : serviceType === 'courier' ? t('courier') : t('restaurants')}
+                </Text>
               </View>
               <ChevronRight size={24} color="#6B7280" />
             </Pressable>

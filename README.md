@@ -54,7 +54,9 @@ src/
 │   │   ├── earnings.tsx     # Earnings (Driver)
 │   │   └── profile.tsx      # User profile
 │   ├── _layout.tsx          # Root navigation
-│   ├── booking.tsx          # Ride booking
+│   ├── booking.tsx          # Taxi ride booking
+│   ├── courier.tsx          # Courier/package delivery
+│   ├── food.tsx             # Food delivery & restaurants
 │   └── trip.tsx             # Trip tracking
 ├── lib/
 │   ├── i18n.ts              # Translations
