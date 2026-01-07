@@ -67,8 +67,17 @@ A comprehensive taxi, courier, and food delivery app designed for Quebec with fu
 - [x] Earnings summary with weekly chart
 - [x] Driver ratings display
 - [x] Taxi meter (MTQ compliant)
-- [ ] Driver onboarding (ID verification) - Backend needed
+- [x] Driver onboarding screens (documents, vehicle, insurance)
 - [ ] Live location broadcasting - Socket.io needed
+
+### Phase 3: UI/UX Components
+
+- [x] Loading spinners and skeleton loaders
+- [x] Toast notifications (success, error, warning, info)
+- [x] Error states and empty states
+- [x] Network error banner
+- [x] Receipt generation with itemized breakdown (bilingual)
+- [x] Support chat UI with quick actions
 
 ---
 
@@ -142,7 +151,9 @@ src/
 │   ├── courier.tsx          # Courier/package delivery
 │   ├── food.tsx             # Food delivery & restaurants
 │   ├── trip.tsx             # Trip tracking
-│   └── driver-dashboard.tsx # Driver dashboard
+│   ├── driver-dashboard.tsx # Driver dashboard
+│   ├── driver-onboarding.tsx # Driver registration (5-step)
+│   └── support.tsx          # Support chat
 ├── lib/
 │   ├── auth-store.ts        # Authentication state
 │   ├── courier-pricing.ts   # Dynamic courier pricing algorithm
@@ -151,6 +162,10 @@ src/
 │   ├── store.ts             # App state (Zustand)
 │   └── cn.ts                # Styling utilities
 └── components/
+    ├── LoadingSpinner.tsx   # Loading states & skeletons
+    ├── Toast.tsx            # Toast notifications
+    ├── ErrorState.tsx       # Error & empty states
+    ├── Receipt.tsx          # Itemized receipt display
     ├── ProofOfDelivery.tsx  # Camera capture for POD
     └── ShipmentLabel.tsx    # QR code & label generation
 ```

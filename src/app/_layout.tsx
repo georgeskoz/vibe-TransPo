@@ -6,6 +6,7 @@ import { useColorScheme } from '@/lib/useColorScheme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { ToastContainer } from '@/components/Toast';
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
@@ -30,6 +31,8 @@ function RootLayoutNav({ colorScheme }: { colorScheme: 'light' | 'dark' | null |
         <Stack.Screen name="food" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="trip" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="driver-dashboard" options={{ headerShown: false }} />
+        <Stack.Screen name="driver-onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="support" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
@@ -47,6 +50,7 @@ export default function RootLayout() {
         <KeyboardProvider>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
           <RootLayoutNav colorScheme={colorScheme} />
+          <ToastContainer />
         </KeyboardProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
