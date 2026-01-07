@@ -236,7 +236,7 @@ export default function DriverOnboardingScreen() {
         Enter your personal details as they appear on your ID.
       </Text>
 
-      <View className="flex-row space-x-3 mb-4">
+      <View className="flex-row mb-4" style={{ gap: 12 }}>
         <View className="flex-1">
           <Text className="text-gray-400 text-sm mb-2">First Name</Text>
           <TextInput
@@ -347,7 +347,7 @@ export default function DriverOnboardingScreen() {
       <Text className="text-white font-semibold mb-3">Vehicle Photo</Text>
       {renderDocumentUpload(formData.vehiclePhoto, () => simulateUpload('vehiclePhoto'))}
 
-      <View className="flex-row space-x-3 mb-4">
+      <View className="flex-row mb-4" style={{ gap: 12 }}>
         <View className="flex-1">
           <Text className="text-gray-400 text-sm mb-2">Make</Text>
           <TextInput
@@ -370,7 +370,7 @@ export default function DriverOnboardingScreen() {
         </View>
       </View>
 
-      <View className="flex-row space-x-3 mb-4">
+      <View className="flex-row mb-4" style={{ gap: 12 }}>
         <View className="flex-1">
           <Text className="text-gray-400 text-sm mb-2">Year</Text>
           <TextInput

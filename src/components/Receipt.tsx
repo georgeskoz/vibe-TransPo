@@ -232,7 +232,7 @@ Permit: ${receipt.driverPermitNumber}
         <View className="mx-4 mt-4 bg-gray-800 rounded-2xl p-4">
           <Text className="text-white font-semibold mb-3">{t.fareBreakdown}</Text>
 
-          <View className="space-y-2">
+          <View style={{ gap: 8 }}>
             <View className="flex-row justify-between py-1">
               <Text className="text-gray-400">{t.baseFare}</Text>
               <Text className="text-white">{formatCurrency(fare.baseFare, language)}</Text>
@@ -356,7 +356,7 @@ Permit: ${receipt.driverPermitNumber}
         )}
 
         {/* Actions */}
-        <View className="mx-4 mt-2 mb-6 flex-row space-x-3">
+        <View className="mx-4 mt-2 mb-6 flex-row" style={{ gap: 12 }}>
           <Pressable
             onPress={handleShare}
             className="flex-1 bg-gray-800 py-4 rounded-xl flex-row items-center justify-center active:bg-gray-700"
