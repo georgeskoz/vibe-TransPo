@@ -1,19 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
   Package, ChevronLeft, MapPin, Navigation, Box, Scale,
-  Clock, Truck, ChevronRight, Check, AlertTriangle, Zap
+  Clock, Truck, ChevronRight, Check, AlertTriangle, Zap, Users, Percent
 } from 'lucide-react-native';
 import Animated, { FadeInDown, SlideInRight } from 'react-native-reanimated';
 import { useTranslation } from '@/lib/i18n';
-import { calculateDeliveryFee, formatCurrency, formatDistance, QUEBEC_TAXES } from '@/lib/quebec-taxi';
+import { formatCurrency, formatDistance, QUEBEC_TAXES } from '@/lib/quebec-taxi';
+import {
+  calculateCourierPrice,
+  getCurrentTimeOfDay,
+  getSimulatedWeather,
+  checkSharedDeliveryAvailability,
+  type DeliverySpeed,
+  type PackageSize,
+  type CourierPriceBreakdown,
+} from '@/lib/courier-pricing';
 import { cn } from '@/lib/cn';
 import * as Haptics from 'expo-haptics';
-
-type PackageSize = 'small' | 'medium' | 'large';
 
 interface PackageSizeOption {
   id: PackageSize;
@@ -63,7 +70,16 @@ const packageSizes: PackageSizeOption[] = [
   },
 ];
 
-const deliveryOptions = [
+const deliveryOptions: {
+  id: DeliverySpeed;
+  nameFr: string;
+  nameEn: string;
+  descFr: string;
+  descEn: string;
+  icon: typeof Zap;
+  eta: string;
+  savingsLabel?: { fr: string; en: string };
+}[] = [
   {
     id: 'express',
     nameFr: 'Express',
@@ -71,8 +87,16 @@ const deliveryOptions = [
     descFr: 'Livraison en 1-2 heures',
     descEn: 'Delivery in 1-2 hours',
     icon: Zap,
-    multiplier: 1.5,
     eta: '1-2h',
+  },
+  {
+    id: 'priority',
+    nameFr: 'Priorité',
+    nameEn: 'Priority',
+    descFr: 'Livraison en 2-4 heures',
+    descEn: 'Delivery in 2-4 hours',
+    icon: Truck,
+    eta: '2-4h',
   },
   {
     id: 'standard',
@@ -80,19 +104,18 @@ const deliveryOptions = [
     nameEn: 'Standard',
     descFr: 'Livraison le même jour',
     descEn: 'Same day delivery',
-    icon: Truck,
-    multiplier: 1,
+    icon: Clock,
     eta: '3-5h',
   },
   {
-    id: 'scheduled',
-    nameFr: 'Planifié',
-    nameEn: 'Scheduled',
-    descFr: 'Choisir une heure',
-    descEn: 'Choose a time',
-    icon: Clock,
-    multiplier: 0.9,
-    eta: '',
+    id: 'shared',
+    nameFr: 'Partagé',
+    nameEn: 'Shared',
+    descFr: 'Économisez jusqu\'à 25%',
+    descEn: 'Save up to 25%',
+    icon: Users,
+    eta: 'Flexible',
+    savingsLabel: { fr: 'Jusqu\'à -25%', en: 'Up to -25%' },
   },
 ];
 
@@ -104,9 +127,14 @@ export default function CourierScreen() {
   const [pickupAddress, setPickupAddress] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [selectedSize, setSelectedSize] = useState<PackageSize>('small');
-  const [selectedOption, setSelectedOption] = useState('standard');
+  const [selectedOption, setSelectedOption] = useState<DeliverySpeed>('standard');
   const [isFragile, setIsFragile] = useState(false);
   const [instructions, setInstructions] = useState('');
+  const [sharedDelivery, setSharedDelivery] = useState<{ available: boolean; partners: number; savingsPercent: number }>({
+    available: false,
+    partners: 0,
+    savingsPercent: 0,
+  });
 
   // Mock distance for demo
   const estimatedDistance = 8.5;
@@ -114,10 +142,26 @@ export default function CourierScreen() {
   const selectedSizeData = packageSizes.find(s => s.id === selectedSize);
   const selectedOptionData = deliveryOptions.find(o => o.id === selectedOption);
 
-  const baseFare = calculateDeliveryFee(estimatedDistance, 0, true, selectedSize);
-  const finalPrice = baseFare.total * (selectedOptionData?.multiplier || 1);
-  const fragileSurcharge = isFragile ? 2.99 : 0;
-  const totalPrice = finalPrice + fragileSurcharge;
+  // Check for shared delivery availability when addresses change
+  useEffect(() => {
+    if (pickupAddress && deliveryAddress) {
+      // Simulate checking for shared delivery
+      const result = checkSharedDeliveryAvailability(45.5017, -73.5673, 45.5088, -73.5878);
+      setSharedDelivery(result);
+    }
+  }, [pickupAddress, deliveryAddress]);
+
+  // Calculate price using new pricing algorithm
+  const priceBreakdown = calculateCourierPrice({
+    packageSize: selectedSize,
+    distanceKm: estimatedDistance,
+    deliverySpeed: selectedOption,
+    isFragile,
+    timeOfDay: getCurrentTimeOfDay(),
+    weather: getSimulatedWeather(),
+    canShareRoute: selectedOption === 'shared' && sharedDelivery.available,
+    potentialSharePartners: sharedDelivery.partners,
+  });
 
   const handleContinue = () => {
     if (!pickupAddress || !deliveryAddress) return;
@@ -459,41 +503,54 @@ export default function CourierScreen() {
                     <Text className="text-gray-400">
                       {language === 'fr' ? 'Frais de base' : 'Base fee'}
                     </Text>
-                    <Text className="text-white">{formatCurrency(selectedSizeData?.price || 0, language)}</Text>
+                    <Text className="text-white">{formatCurrency(priceBreakdown.basePrice, language)}</Text>
                   </View>
                   <View className="flex-row justify-between mb-2">
                     <Text className="text-gray-400">{t('distance')}</Text>
                     <Text className="text-white">
-                      {formatCurrency(baseFare.total - (selectedSizeData?.price || 0), language)}
+                      {formatCurrency(priceBreakdown.distancePrice, language)}
                     </Text>
                   </View>
-                  {selectedOptionData?.multiplier !== 1 && (
+                  {priceBreakdown.speedSurcharge !== 0 && (
                     <View className="flex-row justify-between mb-2">
                       <Text className="text-gray-400">
                         {language === 'fr' ? selectedOptionData?.nameFr : selectedOptionData?.nameEn}
                       </Text>
-                      <Text className="text-white">
-                        {selectedOptionData?.multiplier === 1.5 ? '+50%' : '-10%'}
+                      <Text className={priceBreakdown.speedSurcharge > 0 ? "text-white" : "text-emerald-400"}>
+                        {priceBreakdown.speedSurcharge > 0 ? '+' : ''}{formatCurrency(priceBreakdown.speedSurcharge, language)}
                       </Text>
+                    </View>
+                  )}
+                  {priceBreakdown.sharedDiscount > 0 && (
+                    <View className="flex-row justify-between mb-2">
+                      <Text className="text-gray-400">
+                        {language === 'fr' ? 'Rabais partagé' : 'Shared discount'}
+                      </Text>
+                      <Text className="text-emerald-400">-{formatCurrency(priceBreakdown.sharedDiscount, language)}</Text>
                     </View>
                   )}
                   {isFragile && (
                     <View className="flex-row justify-between mb-2">
                       <Text className="text-gray-400">{t('fragile')}</Text>
-                      <Text className="text-white">{formatCurrency(2.99, language)}</Text>
+                      <Text className="text-white">{formatCurrency(priceBreakdown.fragileFee, language)}</Text>
                     </View>
                   )}
                   <View className="flex-row justify-between mb-2">
                     <Text className="text-gray-400">{t('taxes')}</Text>
-                    <Text className="text-white">{formatCurrency(totalPrice * QUEBEC_TAXES.TOTAL_TAX_RATE, language)}</Text>
+                    <Text className="text-white">{formatCurrency(priceBreakdown.totalTaxes, language)}</Text>
                   </View>
                   <View className="border-t border-cyan-500/30 pt-3 mt-2">
                     <View className="flex-row justify-between">
                       <Text className="text-white font-bold text-lg">{t('total')}</Text>
                       <Text className="text-cyan-400 font-bold text-xl">
-                        {formatCurrency(totalPrice * (1 + QUEBEC_TAXES.TOTAL_TAX_RATE), language)}
+                        {formatCurrency(priceBreakdown.total, language)}
                       </Text>
                     </View>
+                    {priceBreakdown.savings > 0 && (
+                      <Text className="text-emerald-400 text-sm text-right mt-1">
+                        {language === 'fr' ? 'Vous économisez ' : 'You save '}{formatCurrency(priceBreakdown.savings, language)}
+                      </Text>
+                    )}
                   </View>
                 </View>
               </Animated.View>
@@ -525,7 +582,7 @@ export default function CourierScreen() {
               <Text className="text-white text-lg font-bold ml-3">
                 {step === 'details'
                   ? (language === 'fr' ? 'Continuer' : 'Continue')
-                  : `${t('sendPackage')} • ${formatCurrency(totalPrice * (1 + QUEBEC_TAXES.TOTAL_TAX_RATE), language)}`
+                  : `${t('sendPackage')} • ${formatCurrency(priceBreakdown.total, language)}`
                 }
               </Text>
             </LinearGradient>

@@ -66,6 +66,8 @@ interface AppStore {
   // Driver state
   driverStatus: DriverStatus;
   setDriverStatus: (status: DriverStatus) => void;
+  isDriverOnline: boolean;
+  setDriverOnline: (online: boolean) => void;
   pendingRequest: RideRequest | null;
   setPendingRequest: (request: RideRequest | null) => void;
   activeTrip: Trip | null;
@@ -87,6 +89,7 @@ interface AppStore {
 
   // Earnings (driver)
   todayEarnings: number;
+  todayTrips: number;
   weeklyEarnings: number;
   pendingPayout: number;
   completedTrips: Trip[];
@@ -124,6 +127,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
     await AsyncStorage.setItem('driver_status', status);
     set({ driverStatus: status });
   },
+  isDriverOnline: false,
+  setDriverOnline: async (online) => {
+    await AsyncStorage.setItem('driver_online', online ? 'true' : 'false');
+    set({ isDriverOnline: online, driverStatus: online ? 'online' : 'offline' });
+  },
   pendingRequest: null,
   setPendingRequest: (request) => set({ pendingRequest: request }),
   activeTrip: null,
@@ -160,16 +168,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Earnings
   todayEarnings: 0,
+  todayTrips: 0,
   weeklyEarnings: 0,
   pendingPayout: 0,
   completedTrips: [],
   addCompletedTrip: (trip) => {
-    const { completedTrips, todayEarnings, weeklyEarnings } = get();
+    const { completedTrips, todayEarnings, weeklyEarnings, todayTrips } = get();
     const tripEarnings = trip.fare?.total || 0;
     set({
       completedTrips: [trip, ...completedTrips],
       todayEarnings: todayEarnings + tripEarnings,
       weeklyEarnings: weeklyEarnings + tripEarnings,
+      todayTrips: todayTrips + 1,
     });
   },
 

@@ -22,10 +22,14 @@ function RootLayoutNav({ colorScheme }: { colorScheme: 'light' | 'dark' | null |
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/login" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="auth/register" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/verify-otp" options={{ headerShown: false }} />
         <Stack.Screen name="booking" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="courier" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="food" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="trip" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="driver-dashboard" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
