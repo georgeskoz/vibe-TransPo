@@ -2,6 +2,8 @@
 
 A comprehensive taxi, courier, and food delivery app designed for Quebec with full compliance to MTQ (Ministère des Transports du Québec) 2026 regulations.
 
+**Last Updated:** January 2026
+
 ## Features
 
 ### Bilingual Support (French/English)

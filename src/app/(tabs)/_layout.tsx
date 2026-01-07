@@ -67,26 +67,24 @@ export default function TabLayout() {
           ),
         }}
       />
-      {isDriver && (
-        <Tabs.Screen
-          name="meter"
-          options={{
-            tabBarIcon: ({ focused }) => (
-              <TabIcon icon={Car} focused={focused} label={t('taxiMeter')} />
-            ),
-          }}
-        />
-      )}
-      {isDriver && (
-        <Tabs.Screen
-          name="earnings"
-          options={{
-            tabBarIcon: ({ focused }) => (
-              <TabIcon icon={DollarSign} focused={focused} label={t('earnings')} />
-            ),
-          }}
-        />
-      )}
+      <Tabs.Screen
+        name="meter"
+        options={{
+          href: isDriver ? '/meter' : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon={Car} focused={focused} label={t('taxiMeter')} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="earnings"
+        options={{
+          href: isDriver ? '/earnings' : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon={DollarSign} focused={focused} label={t('earnings')} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name="profile"
         options={{
