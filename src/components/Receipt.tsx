@@ -68,7 +68,8 @@ To: ${receipt.dropoffAddress}
 Distance: ${formatDistance(trip.distanceKm, language)}
 Duration: ${formatDuration(trip.durationMinutes, language)}
 
-Subtotal: ${formatCurrency(fare.subtotal, language)}
+Fare Subtotal: ${formatCurrency(fare.subtotal - fare.regulatoryFee, language)}
+Regulatory Fee: ${formatCurrency(fare.regulatoryFee, language)}
 GST (5%): ${formatCurrency(fare.gst, language)}
 QST (9.975%): ${formatCurrency(fare.qst, language)}
 Total: ${formatCurrency(fare.total, language)}
@@ -102,6 +103,7 @@ Permit: ${receipt.driverPermitNumber}
       distanceCharge: 'Distance Charge',
       waitingCharge: 'Waiting Time',
       airportSurcharge: 'Airport Surcharge',
+      regulatoryFee: 'Regulatory Fee',
       subtotal: 'Subtotal',
       gst: 'GST (TPS)',
       qst: 'QST (TVQ)',
@@ -131,6 +133,7 @@ Permit: ${receipt.driverPermitNumber}
       distanceCharge: 'Distance',
       waitingCharge: 'Attente',
       airportSurcharge: 'Supplément aéroport',
+      regulatoryFee: 'Frais réglementaires',
       subtotal: 'Sous-total',
       gst: 'TPS',
       qst: 'TVQ',
@@ -258,6 +261,14 @@ Permit: ${receipt.driverPermitNumber}
               <View className="flex-row justify-between py-1">
                 <Text className="text-gray-400">{t.airportSurcharge}</Text>
                 <Text className="text-white">{formatCurrency(fare.airportSurcharge, language)}</Text>
+              </View>
+            )}
+
+            {/* Regulatory Fee - Mandatory $0.90 since Jan 1, 2021 */}
+            {fare.regulatoryFee > 0 && (
+              <View className="flex-row justify-between py-1">
+                <Text className="text-gray-400">{t.regulatoryFee}</Text>
+                <Text className="text-white">{formatCurrency(fare.regulatoryFee, language)}</Text>
               </View>
             )}
 

@@ -27,6 +27,10 @@ export const QUEBEC_TAXI_RATES = {
   // Airport surcharge (supplément aéroport)
   AIRPORT_SURCHARGE: 17.50,
 
+  // Regulatory fee (frais réglementaires) - Required since Jan 1, 2021
+  // Must be shown separately on receipt
+  REGULATORY_FEE: 0.90,
+
   // Night rate multiplier (22:00 - 06:00) - currently not applied in Quebec
   NIGHT_MULTIPLIER: 1.0,
 
@@ -47,6 +51,7 @@ export interface FareBreakdown {
   distanceFare: number;
   waitingFare: number;
   airportSurcharge: number;
+  regulatoryFee: number; // $0.90 mandatory fee since Jan 1, 2021
   subtotal: number;
   gst: number;
   qst: number;
@@ -69,25 +74,33 @@ export function calculateFare(trip: TripData): FareBreakdown {
   // Airport surcharge
   const airportSurcharge = isAirport ? QUEBEC_TAXI_RATES.AIRPORT_SURCHARGE : 0;
 
-  // Calculate subtotal (before taxes)
-  let subtotal = baseFare + distanceFare + waitingFare + airportSurcharge;
+  // Regulatory fee - mandatory $0.90 since Jan 1, 2021
+  const regulatoryFee = QUEBEC_TAXI_RATES.REGULATORY_FEE;
 
-  // Apply minimum fare
-  subtotal = Math.max(subtotal, QUEBEC_TAXI_RATES.MINIMUM_FARE);
+  // Calculate subtotal (before taxes, excluding regulatory fee which is not taxed)
+  let fareSubtotal = baseFare + distanceFare + waitingFare + airportSurcharge;
 
-  // Calculate taxes
-  const gst = subtotal * QUEBEC_TAXES.GST;
-  const qst = subtotal * QUEBEC_TAXES.QST;
+  // Apply minimum fare (before regulatory fee)
+  fareSubtotal = Math.max(fareSubtotal, QUEBEC_TAXI_RATES.MINIMUM_FARE);
+
+  // Calculate taxes on fare subtotal only (regulatory fee is not taxed)
+  // Note: GST and QST are calculated separately, not compounded
+  const gst = fareSubtotal * QUEBEC_TAXES.GST;
+  const qst = fareSubtotal * QUEBEC_TAXES.QST;
   const totalTaxes = gst + qst;
 
-  // Total
-  const total = subtotal + totalTaxes;
+  // Subtotal includes fare + regulatory fee (before taxes shown)
+  const subtotal = fareSubtotal + regulatoryFee;
+
+  // Total = fare + regulatory fee + taxes
+  const total = fareSubtotal + regulatoryFee + totalTaxes;
 
   return {
     baseFare: roundToTwoDecimals(baseFare),
     distanceFare: roundToTwoDecimals(distanceFare),
     waitingFare: roundToTwoDecimals(waitingFare),
     airportSurcharge: roundToTwoDecimals(airportSurcharge),
+    regulatoryFee: roundToTwoDecimals(regulatoryFee),
     subtotal: roundToTwoDecimals(subtotal),
     gst: roundToTwoDecimals(gst),
     qst: roundToTwoDecimals(qst),
@@ -258,6 +271,7 @@ export function calculateDeliveryFee(
     distanceFare: 0,
     waitingFare: 0,
     airportSurcharge: 0,
+    regulatoryFee: 0, // No regulatory fee for delivery services
     subtotal: roundToTwoDecimals(subtotal),
     gst: roundToTwoDecimals(gst),
     qst: roundToTwoDecimals(qst),

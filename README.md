@@ -180,6 +180,8 @@ src/
 | QST (TVQ) | 9.975% |
 | **Combined** | **14.975%** |
 
+**Note:** GST and QST are calculated separately on the subtotal (not compounded).
+
 ## Quebec Taxi Rates (2026)
 
 | Service | Rate |
@@ -189,6 +191,9 @@ src/
 | Waiting time (per minute) | $0.70 |
 | Minimum fare | $7.00 |
 | Airport surcharge | $17.50 |
+| **Regulatory fee** | **$0.90** |
+
+**Note:** The $0.90 regulatory fee is mandatory since Jan 1, 2021 and must be shown separately on receipts.
 
 ## Courier Pricing Algorithm
 
