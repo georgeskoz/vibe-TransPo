@@ -20,7 +20,9 @@ import {
   formatDistance,
   formatDuration,
   QUEBEC_TAXI_RATES,
-  FareBreakdown
+  FareBreakdown,
+  getCurrentRates,
+  isNightRate,
 } from '@/lib/quebec-taxi';
 import { cn } from '@/lib/cn';
 import * as Haptics from 'expo-haptics';
@@ -418,22 +420,50 @@ export default function MeterScreen() {
             className="px-5 mb-8"
           >
             <Text className="text-white text-lg font-semibold mb-3">{t('quebecRegulations')}</Text>
-            <View className="bg-white/5 border border-white/10 rounded-2xl p-4">
+
+            {/* Day Rate */}
+            <Text className="text-amber-400 text-sm font-medium mb-2">
+              {language === 'fr' ? 'Tarif de jour (5h - 23h)' : 'Day Rate (5 AM - 11 PM)'}
+            </Text>
+            <View className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-4">
               <View className="flex-row justify-between py-2">
                 <Text className="text-gray-400">{t('baseFare')}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.BASE_FARE, language)}</Text>
+                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.BASE_FARE, language)}</Text>
               </View>
               <View className="flex-row justify-between py-2">
                 <Text className="text-gray-400">{language === 'fr' ? 'Par km' : 'Per km'}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.PER_KM, language)}</Text>
+                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.PER_KM, language)}</Text>
               </View>
               <View className="flex-row justify-between py-2">
                 <Text className="text-gray-400">{language === 'fr' ? 'Par minute (attente)' : 'Per minute (waiting)'}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.PER_MINUTE_WAITING, language)}</Text>
+                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.PER_MINUTE_WAITING, language)}</Text>
               </View>
               <View className="flex-row justify-between py-2">
                 <Text className="text-gray-400">{language === 'fr' ? 'Tarif minimum' : 'Minimum fare'}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.MINIMUM_FARE, language)}</Text>
+                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.MINIMUM_FARE, language)}</Text>
+              </View>
+            </View>
+
+            {/* Night Rate */}
+            <Text className="text-blue-400 text-sm font-medium mb-2">
+              {language === 'fr' ? 'Tarif de nuit (23h - 5h)' : 'Night Rate (11 PM - 5 AM)'}
+            </Text>
+            <View className="bg-white/5 border border-blue-500/20 rounded-2xl p-4">
+              <View className="flex-row justify-between py-2">
+                <Text className="text-gray-400">{t('baseFare')}</Text>
+                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.BASE_FARE, language)}</Text>
+              </View>
+              <View className="flex-row justify-between py-2">
+                <Text className="text-gray-400">{language === 'fr' ? 'Par km' : 'Per km'}</Text>
+                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.PER_KM, language)}</Text>
+              </View>
+              <View className="flex-row justify-between py-2">
+                <Text className="text-gray-400">{language === 'fr' ? 'Par minute (attente)' : 'Per minute (waiting)'}</Text>
+                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.PER_MINUTE_WAITING, language)}</Text>
+              </View>
+              <View className="flex-row justify-between py-2">
+                <Text className="text-gray-400">{language === 'fr' ? 'Tarif minimum' : 'Minimum fare'}</Text>
+                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.MINIMUM_FARE, language)}</Text>
               </View>
             </View>
           </Animated.View>

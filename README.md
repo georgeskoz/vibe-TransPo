@@ -184,12 +184,28 @@ src/
 
 ## Quebec Taxi Rates (2026)
 
+### Day Rate (Tarif A) - 5:00 AM to 11:00 PM
+
 | Service | Rate |
 |---------|------|
 | Base fare | $3.50 |
 | Per kilometer | $1.90 |
 | Waiting time (per minute) | $0.70 |
 | Minimum fare | $7.00 |
+
+### Night Rate (Tarif B) - 11:00 PM to 5:00 AM
+
+| Service | Rate |
+|---------|------|
+| Base fare | $3.90 |
+| Per kilometer | $2.10 |
+| Waiting time (per minute) | $0.75 |
+| Minimum fare | $7.80 |
+
+### Additional Fees (Both Rates)
+
+| Service | Rate |
+|---------|------|
 | Airport surcharge | $17.50 |
 | **Regulatory fee** | **$0.90** |
 

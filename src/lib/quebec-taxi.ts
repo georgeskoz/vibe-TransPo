@@ -10,33 +10,51 @@ export const QUEBEC_TAXES = {
 
 // Quebec taxi rates 2026 (MTQ regulated)
 // These rates are set by the Commission des transports du Québec
+// Rate A: Day rate (5:00 AM - 11:00 PM)
+// Rate B: Night rate (11:00 PM - 5:00 AM)
 export const QUEBEC_TAXI_RATES = {
-  // Base fare (frais de prise en charge)
-  BASE_FARE: 3.50,
+  // Day Rate (Tarif A) - 5:00 AM to 11:00 PM
+  DAY: {
+    BASE_FARE: 3.50,        // Prise en charge
+    PER_KM: 1.90,           // Par kilomètre
+    PER_MINUTE_WAITING: 0.70, // Attente par minute
+    MINIMUM_FARE: 7.00,     // Tarif minimum
+  },
 
-  // Per kilometer rate (tarif kilométrique)
-  PER_KM: 1.90,
+  // Night Rate (Tarif B) - 11:00 PM to 5:00 AM
+  NIGHT: {
+    BASE_FARE: 3.90,        // Prise en charge (majoré)
+    PER_KM: 2.10,           // Par kilomètre (majoré)
+    PER_MINUTE_WAITING: 0.75, // Attente par minute (majoré)
+    MINIMUM_FARE: 7.80,     // Tarif minimum (majoré)
+  },
 
-  // Per minute waiting/slow traffic rate (tarif d'attente)
-  // Applies when speed is below 20 km/h
-  PER_MINUTE_WAITING: 0.70,
-
-  // Minimum fare
-  MINIMUM_FARE: 7.00,
-
-  // Airport surcharge (supplément aéroport)
+  // Airport surcharge (supplément aéroport) - same for both rates
   AIRPORT_SURCHARGE: 17.50,
 
   // Regulatory fee (frais réglementaires) - Required since Jan 1, 2021
   // Must be shown separately on receipt
   REGULATORY_FEE: 0.90,
 
-  // Night rate multiplier (22:00 - 06:00) - currently not applied in Quebec
-  NIGHT_MULTIPLIER: 1.0,
-
   // Speed threshold for waiting time (km/h)
   WAITING_SPEED_THRESHOLD: 20,
+
+  // Time boundaries for rate determination
+  DAY_START_HOUR: 5,    // 5:00 AM
+  NIGHT_START_HOUR: 23, // 11:00 PM
 };
+
+// Determine if current time falls under night rate
+export function isNightRate(date: Date = new Date()): boolean {
+  const hour = date.getHours();
+  // Night rate: 11:00 PM (23) to 5:00 AM (5)
+  return hour >= QUEBEC_TAXI_RATES.NIGHT_START_HOUR || hour < QUEBEC_TAXI_RATES.DAY_START_HOUR;
+}
+
+// Get current rate based on time
+export function getCurrentRates(date: Date = new Date()) {
+  return isNightRate(date) ? QUEBEC_TAXI_RATES.NIGHT : QUEBEC_TAXI_RATES.DAY;
+}
 
 // Calculate taxi fare based on Quebec regulations
 export interface TripData {
@@ -44,6 +62,7 @@ export interface TripData {
   durationMinutes: number;
   waitingMinutes: number;
   isAirport: boolean;
+  tripStartTime?: Date; // Optional: defaults to current time
 }
 
 export interface FareBreakdown {
@@ -57,19 +76,25 @@ export interface FareBreakdown {
   qst: number;
   totalTaxes: number;
   total: number;
+  isNightRate: boolean; // Indicates which rate was applied
 }
 
 export function calculateFare(trip: TripData): FareBreakdown {
-  const { distanceKm, waitingMinutes, isAirport } = trip;
+  const { distanceKm, waitingMinutes, isAirport, tripStartTime } = trip;
+
+  // Determine which rate to use based on trip start time
+  const tripTime = tripStartTime ?? new Date();
+  const nightRate = isNightRate(tripTime);
+  const rates = getCurrentRates(tripTime);
 
   // Base fare
-  const baseFare = QUEBEC_TAXI_RATES.BASE_FARE;
+  const baseFare = rates.BASE_FARE;
 
   // Distance fare
-  const distanceFare = distanceKm * QUEBEC_TAXI_RATES.PER_KM;
+  const distanceFare = distanceKm * rates.PER_KM;
 
   // Waiting time fare
-  const waitingFare = waitingMinutes * QUEBEC_TAXI_RATES.PER_MINUTE_WAITING;
+  const waitingFare = waitingMinutes * rates.PER_MINUTE_WAITING;
 
   // Airport surcharge
   const airportSurcharge = isAirport ? QUEBEC_TAXI_RATES.AIRPORT_SURCHARGE : 0;
@@ -81,7 +106,7 @@ export function calculateFare(trip: TripData): FareBreakdown {
   let fareSubtotal = baseFare + distanceFare + waitingFare + airportSurcharge;
 
   // Apply minimum fare (before regulatory fee)
-  fareSubtotal = Math.max(fareSubtotal, QUEBEC_TAXI_RATES.MINIMUM_FARE);
+  fareSubtotal = Math.max(fareSubtotal, rates.MINIMUM_FARE);
 
   // Calculate taxes on fare subtotal only (regulatory fee is not taxed)
   // Note: GST and QST are calculated separately, not compounded
@@ -106,6 +131,7 @@ export function calculateFare(trip: TripData): FareBreakdown {
     qst: roundToTwoDecimals(qst),
     totalTaxes: roundToTwoDecimals(totalTaxes),
     total: roundToTwoDecimals(total),
+    isNightRate: nightRate,
   };
 }
 
@@ -277,5 +303,6 @@ export function calculateDeliveryFee(
     qst: roundToTwoDecimals(qst),
     totalTaxes: roundToTwoDecimals(totalTaxes),
     total: roundToTwoDecimals(total),
+    isNightRate: false, // Not applicable for delivery
   };
 }
