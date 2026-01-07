@@ -12,7 +12,9 @@ import {
   Car,
   Moon,
   Sun,
-  Gauge
+  Gauge,
+  Hand,
+  MapPin,
 } from 'lucide-react-native';
 import Animated, {
   FadeInDown,
@@ -22,7 +24,6 @@ import Animated, {
   withTiming,
   withSequence,
   Easing,
-  interpolateColor,
 } from 'react-native-reanimated';
 import { useTranslation } from '@/lib/i18n';
 import { useAppStore } from '@/lib/store';
@@ -38,9 +39,12 @@ import {
 } from '@/lib/quebec-taxi';
 import { cn } from '@/lib/cn';
 import * as Haptics from 'expo-haptics';
+import { PaymentScreen, PaymentMethod } from '@/components/PaymentScreen';
+import { toast } from '@/components/Toast';
 
 // Meter state types
 type MeterMode = 'distance' | 'waiting';
+type TripType = 'app' | 'hail'; // App-booked or Street hail
 
 // Speed threshold below which we switch to waiting mode (km/h)
 const WAITING_SPEED_THRESHOLD = QUEBEC_TAXI_RATES.WAITING_SPEED_THRESHOLD;
@@ -68,18 +72,25 @@ export default function MeterScreen() {
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [tripStartTime, setTripStartTime] = useState<Date | null>(null);
   const [isNight, setIsNight] = useState(isNightRate());
+  const [tripType, setTripType] = useState<TripType>('app');
+  const [showPayment, setShowPayment] = useState(false);
+  const [tripEnded, setTripEnded] = useState(false);
 
   // Refs for tracking
   const distanceRef = useRef(0);
   const waitingSecondsRef = useRef(0);
-  const lastPositionRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // Animation values
   const pulseScale = useSharedValue(1);
-  const modeIndicatorColor = useSharedValue(0);
 
   // Get current rates based on trip start time
   const currentRates = tripStartTime ? getCurrentRates(tripStartTime) : getCurrentRates();
+
+  // Mock saved card (in real app, get from user profile)
+  const savedCard = {
+    last4: '4242',
+    brand: 'Visa',
+  };
 
   // Check night rate on mount and when meter starts
   useEffect(() => {
@@ -87,7 +98,7 @@ export default function MeterScreen() {
       setIsNight(isNightRate());
     };
     checkNightRate();
-    const interval = setInterval(checkNightRate, 60000); // Check every minute
+    const interval = setInterval(checkNightRate, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -106,11 +117,6 @@ export default function MeterScreen() {
       pulseScale.value = withTiming(1, { duration: 300 });
     }
   }, [meterRunning, meterPaused]);
-
-  // Mode indicator animation
-  useEffect(() => {
-    modeIndicatorColor.value = withTiming(meterMode === 'waiting' ? 1 : 0, { duration: 300 });
-  }, [meterMode]);
 
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
@@ -141,13 +147,11 @@ export default function MeterScreen() {
         setElapsedSeconds(elapsed);
 
         // Simulate GPS movement (in real app, use actual GPS via expo-location)
-        // Simulates Montreal traffic conditions
         const simulatedSpeed = simulateSpeed();
         setCurrentSpeed(simulatedSpeed);
 
         // Determine mode based on speed
         if (simulatedSpeed < WAITING_SPEED_THRESHOLD) {
-          // Vehicle is stationary or in slow traffic - use waiting rate
           if (meterMode !== 'waiting') {
             setMeterMode('waiting');
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -155,18 +159,15 @@ export default function MeterScreen() {
           waitingSecondsRef.current += 1;
           updateMeterWaitingTime(waitingSecondsRef.current / 60);
         } else {
-          // Vehicle is moving - use distance rate
           if (meterMode !== 'distance') {
             setMeterMode('distance');
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }
-          // Calculate distance based on speed (km/h to km/s * 1 second)
           const distanceIncrement = simulatedSpeed / 3600;
           distanceRef.current += distanceIncrement;
           updateMeterDistance(distanceRef.current);
         }
 
-        // Update fare
         updateFare();
       }, 1000);
     }
@@ -178,42 +179,28 @@ export default function MeterScreen() {
 
   // Simulate realistic Montreal traffic speed
   const simulateSpeed = (): number => {
-    // Simulate traffic patterns
     const random = Math.random();
-
-    if (random < 0.25) {
-      // 25% chance: stopped (red light, traffic jam)
-      return 0;
-    } else if (random < 0.40) {
-      // 15% chance: slow traffic (< 20 km/h)
-      return Math.random() * 15 + 3;
-    } else if (random < 0.70) {
-      // 30% chance: city driving (20-40 km/h)
-      return Math.random() * 20 + 20;
-    } else if (random < 0.90) {
-      // 20% chance: fast city driving (40-60 km/h)
-      return Math.random() * 20 + 40;
-    } else {
-      // 10% chance: highway speed (60-100 km/h)
-      return Math.random() * 40 + 60;
-    }
+    if (random < 0.25) return 0;
+    else if (random < 0.40) return Math.random() * 15 + 3;
+    else if (random < 0.70) return Math.random() * 20 + 20;
+    else if (random < 0.90) return Math.random() * 20 + 40;
+    else return Math.random() * 40 + 60;
   };
 
-  const handleStart = () => {
+  const handleStartTrip = (type: TripType) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setTripType(type);
+    setTripEnded(false);
 
-    // Record trip start time for rate determination
     const now = new Date();
     setTripStartTime(now);
     setIsNight(isNightRate(now));
 
-    // Apply flag drop (base fare) immediately
     distanceRef.current = 0;
     waitingSecondsRef.current = 0;
     setMeterMode('distance');
     setCurrentSpeed(0);
 
-    // Calculate initial fare with flag drop
     const initialFare = calculateFare({
       distanceKm: 0,
       durationMinutes: 0,
@@ -226,9 +213,11 @@ export default function MeterScreen() {
     startMeter();
   };
 
-  const handleStop = () => {
+  const handleEndTrip = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     stopMeter();
+    setTripEnded(true);
+    setShowPayment(true);
   };
 
   const handlePause = () => {
@@ -240,6 +229,30 @@ export default function MeterScreen() {
     }
   };
 
+  const handlePaymentComplete = (method: PaymentMethod, tipAmount: number) => {
+    setShowPayment(false);
+    const methodLabels: Record<PaymentMethod, string> = {
+      card_on_file: language === 'fr' ? 'Carte enregistrée' : 'Card on file',
+      cash: language === 'fr' ? 'Comptant' : 'Cash',
+      credit_card: language === 'fr' ? 'Carte de crédit' : 'Credit card',
+      apple_pay: 'Apple Pay',
+      google_pay: 'Google Pay',
+    };
+
+    toast.success(
+      language === 'fr' ? 'Paiement reçu' : 'Payment received',
+      `${methodLabels[method]} - ${formatCurrency((fare?.total ?? 0) + tipAmount, language)}`
+    );
+
+    // Reset meter after successful payment
+    handleReset();
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPayment(false);
+    // Keep fare displayed but meter stopped
+  };
+
   const handleReset = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     distanceRef.current = 0;
@@ -249,6 +262,7 @@ export default function MeterScreen() {
     setMeterMode('distance');
     setCurrentSpeed(0);
     setTripStartTime(null);
+    setTripEnded(false);
     resetMeter();
   };
 
@@ -317,9 +331,36 @@ export default function MeterScreen() {
                 'rounded-3xl p-6 border-2',
                 meterRunning
                   ? 'bg-emerald-500/10 border-emerald-500/30'
+                  : tripEnded
+                  ? 'bg-amber-500/10 border-amber-500/30'
                   : 'bg-white/5 border-white/10'
               )}
             >
+              {/* Trip Type Badge */}
+              {(meterRunning || tripEnded) && (
+                <View className="flex-row justify-center mb-2">
+                  <View className={cn(
+                    'flex-row items-center px-3 py-1 rounded-full',
+                    tripType === 'hail' ? 'bg-purple-500/20' : 'bg-blue-500/20'
+                  )}>
+                    {tripType === 'hail' ? (
+                      <Hand size={14} color="#A855F7" />
+                    ) : (
+                      <MapPin size={14} color="#3B82F6" />
+                    )}
+                    <Text className={cn(
+                      'text-xs font-medium ml-1',
+                      tripType === 'hail' ? 'text-purple-400' : 'text-blue-400'
+                    )}>
+                      {tripType === 'hail'
+                        ? (language === 'fr' ? 'Hélage' : 'Street Hail')
+                        : (language === 'fr' ? 'Via App' : 'App Booking')
+                      }
+                    </Text>
+                  </View>
+                </View>
+              )}
+
               {/* Mode Indicator */}
               {meterRunning && (
                 <View className="flex-row justify-center mb-4">
@@ -358,11 +399,10 @@ export default function MeterScreen() {
                 </Text>
                 <Text className={cn(
                   'text-5xl font-bold mt-2 font-mono',
-                  meterRunning ? 'text-emerald-400' : 'text-white'
+                  meterRunning ? 'text-emerald-400' : tripEnded ? 'text-amber-400' : 'text-white'
                 )}>
                   {fare ? formatCurrency(fare.total, language) : formatCurrency(0, language)}
                 </Text>
-                {/* Flag Drop Indicator */}
                 {fare && !meterRunning && fare.baseFare > 0 && (
                   <Text className="text-gray-500 text-xs mt-1">
                     {language === 'fr' ? 'Prise en charge incluse' : 'Flag drop included'}
@@ -449,6 +489,15 @@ export default function MeterScreen() {
                   </Text>
                 </View>
               )}
+
+              {/* Trip Ended Status */}
+              {tripEnded && !meterRunning && fare && (
+                <View className="bg-amber-500/20 flex-row items-center justify-center py-2 rounded-full mt-4">
+                  <Text className="text-amber-400 font-medium">
+                    {language === 'fr' ? 'Course terminée - En attente de paiement' : 'Trip ended - Awaiting payment'}
+                  </Text>
+                </View>
+              )}
             </Animated.View>
           </Animated.View>
 
@@ -457,64 +506,104 @@ export default function MeterScreen() {
             entering={FadeInDown.duration(500).delay(200)}
             className="px-5 mt-6"
           >
-            <View className="flex-row" style={{ gap: 12 }}>
-              {!meterRunning ? (
+            {!meterRunning && !tripEnded ? (
+              /* Start Trip Options */
+              <View>
+                <Text className="text-gray-400 text-sm mb-3 text-center">
+                  {language === 'fr' ? 'Sélectionnez le type de course' : 'Select trip type'}
+                </Text>
+                <View className="flex-row" style={{ gap: 12 }}>
+                  {/* App Booking */}
+                  <Pressable
+                    onPress={() => handleStartTrip('app')}
+                    className="flex-1 rounded-2xl overflow-hidden"
+                  >
+                    <LinearGradient
+                      colors={['#3B82F6', '#2563EB']}
+                      style={{ padding: 20, alignItems: 'center' }}
+                    >
+                      <MapPin size={28} color="#fff" />
+                      <Text className="text-white text-sm font-bold mt-2">
+                        {language === 'fr' ? 'Via App' : 'App Booking'}
+                      </Text>
+                    </LinearGradient>
+                  </Pressable>
+
+                  {/* Street Hail */}
+                  <Pressable
+                    onPress={() => handleStartTrip('hail')}
+                    className="flex-1 rounded-2xl overflow-hidden"
+                  >
+                    <LinearGradient
+                      colors={['#A855F7', '#9333EA']}
+                      style={{ padding: 20, alignItems: 'center' }}
+                    >
+                      <Hand size={28} color="#fff" />
+                      <Text className="text-white text-sm font-bold mt-2">
+                        {language === 'fr' ? 'Hélage' : 'Street Hail'}
+                      </Text>
+                    </LinearGradient>
+                  </Pressable>
+                </View>
+              </View>
+            ) : meterRunning ? (
+              /* Running Trip Controls */
+              <View className="flex-row" style={{ gap: 12 }}>
                 <Pressable
-                  onPress={handleStart}
+                  onPress={handlePause}
+                  className="flex-1 bg-amber-500/20 border border-amber-500/30 rounded-2xl p-5 flex-row items-center justify-center"
+                >
+                  {meterPaused ? (
+                    <Play size={24} color="#F59E0B" />
+                  ) : (
+                    <Pause size={24} color="#F59E0B" />
+                  )}
+                  <Text className="text-amber-400 font-bold ml-2">
+                    {meterPaused ? t('resumeTrip') : t('pauseTrip')}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleEndTrip}
                   className="flex-1 rounded-2xl overflow-hidden"
+                >
+                  <LinearGradient
+                    colors={['#EF4444', '#DC2626']}
+                    style={{ padding: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
+                  >
+                    <Square size={24} color="#fff" fill="#fff" />
+                    <Text className="text-white font-bold ml-2">{t('endTrip')}</Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            ) : tripEnded && fare ? (
+              /* Trip Ended - Payment Options */
+              <View>
+                <Pressable
+                  onPress={() => setShowPayment(true)}
+                  className="rounded-2xl overflow-hidden mb-3"
                 >
                   <LinearGradient
                     colors={['#10B981', '#059669']}
                     style={{ padding: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
                   >
-                    <Play size={24} color="#fff" fill="#fff" />
-                    <Text className="text-white text-lg font-bold ml-3">{t('startTrip')}</Text>
+                    <Text className="text-white text-lg font-bold">
+                      {language === 'fr' ? 'Procéder au paiement' : 'Proceed to Payment'}
+                    </Text>
                   </LinearGradient>
                 </Pressable>
-              ) : (
-                <>
-                  <Pressable
-                    onPress={handlePause}
-                    className="flex-1 bg-amber-500/20 border border-amber-500/30 rounded-2xl p-5 flex-row items-center justify-center"
-                  >
-                    {meterPaused ? (
-                      <Play size={24} color="#F59E0B" />
-                    ) : (
-                      <Pause size={24} color="#F59E0B" />
-                    )}
-                    <Text className="text-amber-400 font-bold ml-2">
-                      {meterPaused ? t('resumeTrip') : t('pauseTrip')}
-                    </Text>
-                  </Pressable>
 
-                  <Pressable
-                    onPress={handleStop}
-                    className="flex-1 rounded-2xl overflow-hidden"
-                  >
-                    <LinearGradient
-                      colors={['#EF4444', '#DC2626']}
-                      style={{ padding: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
-                    >
-                      <Square size={24} color="#fff" fill="#fff" />
-                      <Text className="text-white font-bold ml-2">{t('endTrip')}</Text>
-                    </LinearGradient>
-                  </Pressable>
-                </>
-              )}
-            </View>
-
-            {/* Reset Button */}
-            {!meterRunning && fare && (
-              <Pressable
-                onPress={handleReset}
-                className="mt-3 bg-white/5 border border-white/10 rounded-2xl p-4 flex-row items-center justify-center"
-              >
-                <RotateCcw size={20} color="#9CA3AF" />
-                <Text className="text-gray-400 font-medium ml-2">
-                  {language === 'fr' ? 'Réinitialiser' : 'Reset'}
-                </Text>
-              </Pressable>
-            )}
+                <Pressable
+                  onPress={handleReset}
+                  className="bg-white/5 border border-white/10 rounded-2xl p-4 flex-row items-center justify-center"
+                >
+                  <RotateCcw size={20} color="#9CA3AF" />
+                  <Text className="text-gray-400 font-medium ml-2">
+                    {language === 'fr' ? 'Nouvelle course' : 'New Trip'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
           </Animated.View>
 
           {/* Airport Toggle */}
@@ -527,11 +616,13 @@ export default function MeterScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setIsAirport(!isAirport);
               }}
+              disabled={meterRunning}
               className={cn(
                 'flex-row items-center justify-between p-4 rounded-2xl border',
                 isAirport
                   ? 'bg-blue-500/20 border-blue-500/30'
-                  : 'bg-white/5 border-white/10'
+                  : 'bg-white/5 border-white/10',
+                meterRunning && 'opacity-50'
               )}
             >
               <View className="flex-row items-center">
@@ -567,7 +658,6 @@ export default function MeterScreen() {
                 {language === 'fr' ? 'Détail du tarif' : 'Fare breakdown'}
               </Text>
               <View className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                {/* Flag Drop / Base Fare */}
                 <View className="flex-row justify-between py-2">
                   <View className="flex-row items-center">
                     <Text className="text-gray-400">{t('baseFare')}</Text>
@@ -578,7 +668,6 @@ export default function MeterScreen() {
                   <Text className="text-white">{formatCurrency(fare.baseFare, language)}</Text>
                 </View>
 
-                {/* Distance Fare */}
                 <View className="flex-row justify-between py-2">
                   <View className="flex-row items-center">
                     <Text className="text-gray-400">{t('distanceFare')}</Text>
@@ -589,7 +678,6 @@ export default function MeterScreen() {
                   <Text className="text-white">{formatCurrency(fare.distanceFare, language)}</Text>
                 </View>
 
-                {/* Waiting Time Fare */}
                 <View className="flex-row justify-between py-2">
                   <View className="flex-row items-center">
                     <Text className="text-gray-400">{t('waitingTime')}</Text>
@@ -600,7 +688,6 @@ export default function MeterScreen() {
                   <Text className="text-white">{formatCurrency(fare.waitingFare, language)}</Text>
                 </View>
 
-                {/* Airport Surcharge */}
                 {fare.airportSurcharge > 0 && (
                   <View className="flex-row justify-between py-2">
                     <Text className="text-gray-400">
@@ -610,7 +697,6 @@ export default function MeterScreen() {
                   </View>
                 )}
 
-                {/* Regulatory Fee */}
                 <View className="flex-row justify-between py-2">
                   <Text className="text-gray-400">
                     {language === 'fr' ? 'Frais réglementaires' : 'Regulatory fee'}
@@ -644,98 +730,111 @@ export default function MeterScreen() {
             </Animated.View>
           )}
 
-          {/* Quebec Rates Info */}
-          <Animated.View
-            entering={FadeInDown.duration(500).delay(350)}
-            className="px-5 mb-8"
-          >
-            <Text className="text-white text-lg font-semibold mb-3">{t('quebecRegulations')}</Text>
+          {/* Quebec Rates Info - Only show when not in trip */}
+          {!meterRunning && !tripEnded && (
+            <Animated.View
+              entering={FadeInDown.duration(500).delay(350)}
+              className="px-5 mb-8"
+            >
+              <Text className="text-white text-lg font-semibold mb-3">{t('quebecRegulations')}</Text>
 
-            {/* Current Active Rate Highlight */}
-            <View className={cn(
-              'p-3 rounded-xl mb-4',
-              isNight ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-amber-500/10 border border-amber-500/20'
-            )}>
-              <Text className={cn(
-                'text-sm font-medium text-center',
-                isNight ? 'text-blue-400' : 'text-amber-400'
+              <View className={cn(
+                'p-3 rounded-xl mb-4',
+                isNight ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-amber-500/10 border border-amber-500/20'
               )}>
-                {isNight
-                  ? (language === 'fr' ? '🌙 Tarif de nuit actuellement en vigueur' : '🌙 Night rate currently active')
-                  : (language === 'fr' ? '☀️ Tarif de jour actuellement en vigueur' : '☀️ Day rate currently active')
-                }
+                <Text className={cn(
+                  'text-sm font-medium text-center',
+                  isNight ? 'text-blue-400' : 'text-amber-400'
+                )}>
+                  {isNight
+                    ? (language === 'fr' ? '🌙 Tarif de nuit actuellement en vigueur' : '🌙 Night rate currently active')
+                    : (language === 'fr' ? '☀️ Tarif de jour actuellement en vigueur' : '☀️ Day rate currently active')
+                  }
+                </Text>
+              </View>
+
+              {/* Day Rate */}
+              <Text className="text-amber-400 text-sm font-medium mb-2">
+                {language === 'fr' ? 'Tarif de jour (5h - 23h)' : 'Day Rate (5 AM - 11 PM)'}
               </Text>
-            </View>
+              <View className={cn(
+                'bg-white/5 rounded-2xl p-4 mb-4',
+                !isNight ? 'border-2 border-amber-500/30' : 'border border-white/10'
+              )}>
+                <View className="flex-row justify-between py-2">
+                  <Text className="text-gray-400">{t('baseFare')}</Text>
+                  <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.BASE_FARE, language)}</Text>
+                </View>
+                <View className="flex-row justify-between py-2">
+                  <Text className="text-gray-400">{language === 'fr' ? 'Par km' : 'Per km'}</Text>
+                  <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.PER_KM, language)}</Text>
+                </View>
+                <View className="flex-row justify-between py-2">
+                  <Text className="text-gray-400">{language === 'fr' ? 'Par minute (attente)' : 'Per minute (waiting)'}</Text>
+                  <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.PER_MINUTE_WAITING, language)}</Text>
+                </View>
+                <View className="flex-row justify-between py-2">
+                  <Text className="text-gray-400">{language === 'fr' ? 'Tarif minimum' : 'Minimum fare'}</Text>
+                  <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.MINIMUM_FARE, language)}</Text>
+                </View>
+              </View>
 
-            {/* Day Rate */}
-            <Text className="text-amber-400 text-sm font-medium mb-2">
-              {language === 'fr' ? 'Tarif de jour (5h - 23h)' : 'Day Rate (5 AM - 11 PM)'}
-            </Text>
-            <View className={cn(
-              'bg-white/5 rounded-2xl p-4 mb-4',
-              !isNight ? 'border-2 border-amber-500/30' : 'border border-white/10'
-            )}>
-              <View className="flex-row justify-between py-2">
-                <Text className="text-gray-400">{t('baseFare')}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.BASE_FARE, language)}</Text>
+              {/* Night Rate */}
+              <Text className="text-blue-400 text-sm font-medium mb-2">
+                {language === 'fr' ? 'Tarif de nuit (23h - 5h)' : 'Night Rate (11 PM - 5 AM)'}
+              </Text>
+              <View className={cn(
+                'bg-white/5 rounded-2xl p-4',
+                isNight ? 'border-2 border-blue-500/30' : 'border border-white/10'
+              )}>
+                <View className="flex-row justify-between py-2">
+                  <Text className="text-gray-400">{t('baseFare')}</Text>
+                  <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.BASE_FARE, language)}</Text>
+                </View>
+                <View className="flex-row justify-between py-2">
+                  <Text className="text-gray-400">{language === 'fr' ? 'Par km' : 'Per km'}</Text>
+                  <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.PER_KM, language)}</Text>
+                </View>
+                <View className="flex-row justify-between py-2">
+                  <Text className="text-gray-400">{language === 'fr' ? 'Par minute (attente)' : 'Per minute (waiting)'}</Text>
+                  <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.PER_MINUTE_WAITING, language)}</Text>
+                </View>
+                <View className="flex-row justify-between py-2">
+                  <Text className="text-gray-400">{language === 'fr' ? 'Tarif minimum' : 'Minimum fare'}</Text>
+                  <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.MINIMUM_FARE, language)}</Text>
+                </View>
               </View>
-              <View className="flex-row justify-between py-2">
-                <Text className="text-gray-400">{language === 'fr' ? 'Par km' : 'Per km'}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.PER_KM, language)}</Text>
-              </View>
-              <View className="flex-row justify-between py-2">
-                <Text className="text-gray-400">{language === 'fr' ? 'Par minute (attente)' : 'Per minute (waiting)'}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.PER_MINUTE_WAITING, language)}</Text>
-              </View>
-              <View className="flex-row justify-between py-2">
-                <Text className="text-gray-400">{language === 'fr' ? 'Tarif minimum' : 'Minimum fare'}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.DAY.MINIMUM_FARE, language)}</Text>
-              </View>
-            </View>
 
-            {/* Night Rate */}
-            <Text className="text-blue-400 text-sm font-medium mb-2">
-              {language === 'fr' ? 'Tarif de nuit (23h - 5h)' : 'Night Rate (11 PM - 5 AM)'}
-            </Text>
-            <View className={cn(
-              'bg-white/5 rounded-2xl p-4',
-              isNight ? 'border-2 border-blue-500/30' : 'border border-white/10'
-            )}>
-              <View className="flex-row justify-between py-2">
-                <Text className="text-gray-400">{t('baseFare')}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.BASE_FARE, language)}</Text>
+              {/* Additional Fees */}
+              <Text className="text-gray-400 text-sm font-medium mt-4 mb-2">
+                {language === 'fr' ? 'Frais additionnels' : 'Additional fees'}
+              </Text>
+              <View className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                <View className="flex-row justify-between py-2">
+                  <Text className="text-gray-400">{language === 'fr' ? 'Supplément aéroport' : 'Airport surcharge'}</Text>
+                  <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.AIRPORT_SURCHARGE, language)}</Text>
+                </View>
+                <View className="flex-row justify-between py-2">
+                  <Text className="text-gray-400">{language === 'fr' ? 'Frais réglementaires' : 'Regulatory fee'}</Text>
+                  <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.REGULATORY_FEE, language)}</Text>
+                </View>
               </View>
-              <View className="flex-row justify-between py-2">
-                <Text className="text-gray-400">{language === 'fr' ? 'Par km' : 'Per km'}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.PER_KM, language)}</Text>
-              </View>
-              <View className="flex-row justify-between py-2">
-                <Text className="text-gray-400">{language === 'fr' ? 'Par minute (attente)' : 'Per minute (waiting)'}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.PER_MINUTE_WAITING, language)}</Text>
-              </View>
-              <View className="flex-row justify-between py-2">
-                <Text className="text-gray-400">{language === 'fr' ? 'Tarif minimum' : 'Minimum fare'}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.NIGHT.MINIMUM_FARE, language)}</Text>
-              </View>
-            </View>
-
-            {/* Additional Fees */}
-            <Text className="text-gray-400 text-sm font-medium mt-4 mb-2">
-              {language === 'fr' ? 'Frais additionnels' : 'Additional fees'}
-            </Text>
-            <View className="bg-white/5 border border-white/10 rounded-2xl p-4">
-              <View className="flex-row justify-between py-2">
-                <Text className="text-gray-400">{language === 'fr' ? 'Supplément aéroport' : 'Airport surcharge'}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.AIRPORT_SURCHARGE, language)}</Text>
-              </View>
-              <View className="flex-row justify-between py-2">
-                <Text className="text-gray-400">{language === 'fr' ? 'Frais réglementaires' : 'Regulatory fee'}</Text>
-                <Text className="text-white">{formatCurrency(QUEBEC_TAXI_RATES.REGULATORY_FEE, language)}</Text>
-              </View>
-            </View>
-          </Animated.View>
+            </Animated.View>
+          )}
         </ScrollView>
       </SafeAreaView>
+
+      {/* Payment Screen Modal */}
+      {fare && (
+        <PaymentScreen
+          visible={showPayment}
+          fare={fare}
+          language={language}
+          onPaymentComplete={handlePaymentComplete}
+          onCancel={handlePaymentCancel}
+          savedCard={savedCard}
+        />
+      )}
     </View>
   );
 }

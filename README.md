@@ -67,8 +67,14 @@ A comprehensive taxi, courier, and food delivery app designed for Quebec with fu
 - [x] Earnings summary with weekly chart
 - [x] Driver ratings display
 - [x] Taxi meter (MTQ compliant)
+- [x] Day/Night rate auto-switching (5 AM - 11 PM / 11 PM - 5 AM)
+- [x] Automated GPS-based distance/waiting mode detection
+- [x] Trip type selection (App Booking / Street Hail)
+- [x] Payment screen with multiple options (Card on file, Cash, Credit Card, Apple Pay, Google Pay)
+- [x] Tip selection (0%, 10%, 15%, 20%, 25%, custom)
 - [x] Driver onboarding screens (documents, vehicle, insurance)
 - [ ] Live location broadcasting - Socket.io needed
+- [ ] Square SDK actual payment processing - API needed
 
 ### Phase 3: UI/UX Components
 
@@ -108,10 +114,20 @@ A comprehensive taxi, courier, and food delivery app designed for Quebec with fu
 ### Driver Features (Driver Mode)
 - **Dashboard**: Online/offline toggle, daily stats, scheduled rides
 - **Taxi Meter**:
-  - Real-time fare calculation based on Quebec rates
-  - Distance and waiting time tracking
+  - Automated GPS-based distance/waiting mode detection
+  - Day rate (5 AM - 11 PM) and Night rate (11 PM - 5 AM) auto-switching
+  - Trip types: App Booking and Street Hail (meter hailing)
+  - Real-time fare calculation based on Quebec MTQ rates
+  - Distance and waiting time tracking with speed indicator
   - Airport surcharge toggle
-  - Complete fare breakdown with taxes
+  - Complete fare breakdown with $0.90 regulatory fee
+  - Payment screen with tip selection on trip end
+- **Payment Options**:
+  - Card on file
+  - Cash
+  - Credit/Debit Card (Square)
+  - Apple Pay
+  - Google Pay
 - **Earnings**: Weekly earnings chart, daily breakdown, payout info
 - **Documents**: Permit, insurance, vehicle registration management
 
