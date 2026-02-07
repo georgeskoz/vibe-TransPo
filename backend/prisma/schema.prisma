@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  userType      String    @default("user") // "user" or "driver"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  rideRequests  RideRequest[]
+  rideOffers    RideOffer[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model RideRequest {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pickupAddress       String
+  destinationAddress  String
+  distance            Float     // in kilometers
+  estimatedDuration   Int       // in minutes
+  estimatedFare       Float
+  rideType            String    // "standard", "premium", "accessible", "xl"
+  status              String    @default("pending") // "pending", "accepted", "completed", "cancelled"
+  createdAt           DateTime  @default(now())
+  expiresAt           DateTime  // Offer expires after 30 seconds
+  rideOffers          RideOffer[]
+}
+
+model RideOffer {
+  id            String    @id @default(cuid())
+  rideRequestId String
+  rideRequest   RideRequest @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
+  driverId      String
+  driver        User      @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  status        String    @default("pending") // "pending", "accepted", "rejected", "expired"
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime  // Offer expires after 30 seconds
+}

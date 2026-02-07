@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, Vibration } from 'react-native';
+import { View, Text, ScrollView, Pressable, Vibration, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -24,6 +24,7 @@ import { useAppStore } from '@/lib/store';
 import { formatCurrency, formatDistance, formatDuration } from '@/lib/quebec-taxi';
 import { cn } from '@/lib/cn';
 import * as Haptics from 'expo-haptics';
+import { useRideOffers } from '@/lib/hooks/useRideOffers';
 
 interface RideRequest {
   id: string;
@@ -77,9 +78,11 @@ export default function DriverDashboardScreen() {
   const todayEarnings = useAppStore((s) => s.todayEarnings);
   const todayTrips = useAppStore((s) => s.todayTrips);
 
-  const [currentRequest, setCurrentRequest] = useState<RideRequest | null>(null);
-  const [requestTimer, setRequestTimer] = useState(0);
-  const [showScheduledRides, setShowScheduledRides] = useState(false);
+  const { offers, acceptOffer, rejectOffer } = useRideOffers(isDriverOnline);
+  const [currentOfferIndex, setCurrentOfferIndex] = useState(0);
+  const [requestTimer, setRequestTimer] = useState(30);
+
+  const currentOffer = offers[currentOfferIndex];
 
   // Pulse animation for online status
   const pulseOpacity = useSharedValue(1);
@@ -103,57 +106,46 @@ export default function DriverDashboardScreen() {
     opacity: pulseOpacity.value,
   }));
 
-  // Simulate incoming ride requests when online
+  // Show offer when available
   useEffect(() => {
-    if (!isDriverOnline || currentRequest) return;
-
-    const interval = setInterval(() => {
-      // Random chance of getting a request
-      if (Math.random() > 0.7) {
-        const randomRequest = mockRideRequests[Math.floor(Math.random() * mockRideRequests.length)];
-        setCurrentRequest({ ...randomRequest, id: Date.now().toString(), expiresIn: 30 });
-        setRequestTimer(30);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        Vibration.vibrate([0, 500, 200, 500]);
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [isDriverOnline, currentRequest]);
+    if (currentOffer) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Vibration.vibrate([0, 500, 200, 500]);
+      setRequestTimer(30);
+    }
+  }, [currentOffer]);
 
   // Request timer countdown
   useEffect(() => {
-    if (!currentRequest || requestTimer <= 0) return;
+    if (!currentOffer || requestTimer <= 0) {
+      setCurrentOfferIndex((prev) => (prev + 1) % Math.max(offers.length, 1));
+      return;
+    }
 
     const timer = setInterval(() => {
-      setRequestTimer((prev) => {
-        if (prev <= 1) {
-          setCurrentRequest(null);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setRequestTimer((prev) => prev - 1);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentRequest, requestTimer]);
+  }, [currentOffer, requestTimer, offers.length]);
 
   const handleToggleOnline = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setDriverOnline(!isDriverOnline);
   };
 
-  const handleAcceptRide = () => {
-    if (!currentRequest) return;
+  const handleAcceptRide = async () => {
+    if (!currentOffer) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setCurrentRequest(null);
-    // Navigate to active trip screen
+    await acceptOffer(currentOffer.id);
     router.push('/trip');
   };
 
-  const handleDeclineRide = () => {
+  const handleDeclineRide = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setCurrentRequest(null);
+    if (currentOffer) {
+      await rejectOffer(currentOffer.id);
+    }
   };
 
   return (
@@ -268,7 +260,7 @@ export default function DriverDashboardScreen() {
             className="px-5 mt-6"
           >
             <Pressable
-              onPress={() => setShowScheduledRides(!showScheduledRides)}
+              onPress={() => {}}
               className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 flex-row items-center justify-between"
             >
               <View className="flex-row items-center">
@@ -352,7 +344,7 @@ export default function DriverDashboardScreen() {
         </ScrollView>
 
         {/* Incoming Ride Request Modal */}
-        {currentRequest && (
+        {currentOffer && (
           <Animated.View
             entering={SlideInUp.duration(400)}
             exiting={SlideOutDown.duration(300)}
@@ -384,7 +376,7 @@ export default function DriverDashboardScreen() {
                     </View>
                   </View>
                   <Text className="text-amber-400 text-2xl font-bold">
-                    {formatCurrency(currentRequest.estimatedFare, language)}
+                    {formatCurrency(currentOffer.rideRequest.estimatedFare, language)}
                   </Text>
                 </View>
 
@@ -399,20 +391,20 @@ export default function DriverDashboardScreen() {
                     <View className="flex-1">
                       <Text className="text-gray-400 text-xs">{t('pickupLocation')}</Text>
                       <Text className="text-white mb-3" numberOfLines={1}>
-                        {currentRequest.pickupAddress}
+                        {currentOffer.rideRequest.pickupAddress}
                       </Text>
                       <Text className="text-gray-400 text-xs">{t('destination')}</Text>
                       <Text className="text-white" numberOfLines={1}>
-                        {currentRequest.destinationAddress}
+                        {currentOffer.rideRequest.destinationAddress}
                       </Text>
                     </View>
                   </View>
                   <View className="flex-row mt-3 pt-3 border-t border-white/10">
                     <Text className="text-gray-400 flex-1">
-                      {formatDistance(currentRequest.distance, language)}
+                      {formatDistance(currentOffer.rideRequest.distance, language)}
                     </Text>
                     <Text className="text-gray-400">
-                      ~{formatDuration(currentRequest.distance * 2, language)}
+                      ~{formatDuration(currentOffer.rideRequest.estimatedDuration, language)}
                     </Text>
                   </View>
                 </View>
@@ -421,15 +413,15 @@ export default function DriverDashboardScreen() {
                 <View className="flex-row items-center mb-4">
                   <View className="w-10 h-10 bg-gray-700 rounded-full items-center justify-center">
                     <Text className="text-white font-bold">
-                      {currentRequest.passengerName.charAt(0)}
+                      {currentOffer.rideRequest.user.name.charAt(0)}
                     </Text>
                   </View>
                   <View className="ml-3">
-                    <Text className="text-white font-medium">{currentRequest.passengerName}</Text>
+                    <Text className="text-white font-medium">{currentOffer.rideRequest.user.name}</Text>
                     <View className="flex-row items-center">
                       <Star size={12} color="#FFB800" fill="#FFB800" />
                       <Text className="text-gray-400 text-sm ml-1">
-                        {currentRequest.passengerRating} • {currentRequest.passengerTrips} trips
+                        New passenger
                       </Text>
                     </View>
                   </View>

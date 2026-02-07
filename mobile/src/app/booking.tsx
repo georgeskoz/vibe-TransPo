@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -13,6 +13,7 @@ import { useAppStore } from '@/lib/store';
 import { estimateFare, formatCurrency, formatDistance, formatDuration } from '@/lib/quebec-taxi';
 import { cn } from '@/lib/cn';
 import * as Haptics from 'expo-haptics';
+import { useCreateRideRequest } from '@/lib/hooks/useCreateRideRequest';
 
 const savedPlaces = [
   { id: '1', name: 'Maison', address: '1234 Rue Saint-Denis, Montréal', icon: '🏠' },
@@ -85,6 +86,7 @@ export default function BookingScreen() {
   const router = useRouter();
   const serviceType = useAppStore((s) => s.serviceType);
   const setCurrentTrip = useAppStore((s) => s.setCurrentTrip);
+  const { createRequest, loading } = useCreateRideRequest();
 
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
@@ -108,10 +110,49 @@ export default function BookingScreen() {
     }
   };
 
-  const handleBookRide = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    // Navigate to trip tracking screen
-    router.push('/trip');
+  const handleBookRide = async () => {
+    if (!selectedDestination) return;
+
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const selectedType = rideTypes.find(r => r.id === selectedRideType);
+      const baseFare = estimateFare(selectedDestination.distance, selectedDestination.distance * 2);
+      const estimatedFare = baseFare ? baseFare.total * (selectedType?.multiplier || 1) : 0;
+
+      const rideRequest = await createRequest({
+        pickupAddress: pickup || 'Current Location',
+        destinationAddress: selectedDestination.address,
+        distance: selectedDestination.distance,
+        estimatedDuration: Math.round(selectedDestination.distance * 2),
+        estimatedFare,
+        rideType: selectedRideType,
+      });
+
+      if (rideRequest) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setCurrentTrip({
+          id: rideRequest.id,
+          status: 'searching',
+          serviceType: 'taxi',
+          pickup: {
+            address: pickup || 'Current Location',
+            latitude: 0,
+            longitude: 0,
+          },
+          destination: {
+            address: selectedDestination.address,
+            latitude: 0,
+            longitude: 0,
+          },
+          fare: baseFare,
+          distanceKm: selectedDestination.distance,
+        });
+        router.push('/trip');
+      }
+    } catch (error) {
+      console.error('Failed to book ride:', error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
   };
 
   const selectedType = rideTypes.find(r => r.id === selectedRideType);
