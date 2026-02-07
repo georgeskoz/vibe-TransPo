@@ -414,9 +414,54 @@ function DriverHomeScreen() {
   }
 
   return (
-    <GestureHandlerRootView className="flex-1 bg-gray-100">
-      <View className="flex-1 bg-gray-100">
-        <View className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-150" />
+    <GestureHandlerRootView className="flex-1">
+      <View className="flex-1 bg-slate-300">
+        {/* Map Background */}
+        <View className="absolute inset-0">
+          <LinearGradient
+            colors={['#b8dfe8', '#a3d5e0', '#8dcad8']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ flex: 1 }}
+          />
+
+          {/* Street grid pattern */}
+          <View className="absolute inset-0">
+            {/* Horizontal streets */}
+            {[0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780].map((offset) => (
+              <View
+                key={`h-${offset}`}
+                style={{
+                  position: 'absolute',
+                  top: offset,
+                  left: 0,
+                  right: 0,
+                  height: 2,
+                  backgroundColor: 'rgba(255, 255, 255, 0.35)',
+                }}
+              />
+            ))}
+            {/* Vertical streets */}
+            {[0, 50, 100, 150, 200, 250, 300, 350, 400].map((offset) => (
+              <View
+                key={`v-${offset}`}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 0,
+                  left: offset,
+                  width: 2,
+                  backgroundColor: 'rgba(255, 255, 255, 0.35)',
+                }}
+              />
+            ))}
+          </View>
+
+          {/* Green areas (parks) */}
+          <View className="absolute top-1/4 left-1/4 w-24 h-24 bg-green-400/35 rounded-full blur-xl" />
+          <View className="absolute top-1/3 right-1/4 w-32 h-32 bg-emerald-400/30 rounded-full blur-xl" />
+          <View className="absolute bottom-1/4 left-1/3 w-28 h-28 bg-teal-400/25 rounded-full blur-xl" />
+        </View>
 
         <SafeAreaView className="flex-1" edges={['top']}>
           {/* Driver Location Indicator */}

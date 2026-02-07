@@ -61,14 +61,16 @@ A comprehensive taxi, courier, and food delivery app designed for Quebec with fu
 ### Phase 2: Driver App
 
 #### Driver Home Screen (Online Mode)
-- [x] Map-based interface when driver goes online
+- [x] Map-based interface with street grid pattern and parks visualization
 - [x] Draggable bottom sheet menu with three snap points
-  - **Collapsed (60px)**: Shows "You're online" status with Settings & List icons
-  - **Half-Expanded (250px)**: Reveals today's earnings summary
+  - **Collapsed (80px)**: Shows "You're online" status with Settings & List icons
+  - **Half-Expanded (260px)**: Reveals today's earnings summary
   - **Full-Expanded (90%)**: Full menu with Documents, History, Profile, Support, and Logout
 - [x] Blur glass effect for premium aesthetic
 - [x] Incoming ride request modal with 20-second countdown timer
-- [x] Gesture-enabled swipe up/down for bottom sheet interaction
+- [x] Gesture-enabled swipe up/down for bottom sheet interaction with spring physics
+- [x] Vehicle location indicator at map center
+- [x] Test ride request button for development
 - [ ] Real-time location broadcasting - Socket.io needed
 
 ### Phase 3: UI/UX Components
