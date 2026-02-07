@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Image, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,7 +12,6 @@ import { useRouter } from 'expo-router';
 import { cn } from '@/lib/cn';
 import { DriverBottomSheet } from '@/components/DriverBottomSheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import BottomSheet from '@gorhom/bottom-sheet';
 
 const services: { type: ServiceType; icon: any; gradient: [string, string] }[] = [
   { type: 'taxi', icon: Car, gradient: ['#FFB800', '#FF8C00'] },
@@ -253,7 +252,6 @@ function DriverHomeScreen() {
   const todayEarnings = useAppStore((s) => s.todayEarnings);
   const pendingRequest = useAppStore((s) => s.pendingRequest);
   const setPendingRequest = useAppStore((s) => s.setPendingRequest);
-  const bottomSheetRef = useRef<BottomSheet>(null);
 
   const isOnline = driverStatus === 'online';
   const [showIncomingRequest, setShowIncomingRequest] = useState(!!pendingRequest);
@@ -454,7 +452,6 @@ function DriverHomeScreen() {
 
         {/* Bottom Sheet for Driver Menu */}
         <DriverBottomSheet
-          ref={bottomSheetRef}
           onLogout={() => {
             setDriverStatus('offline');
           }}

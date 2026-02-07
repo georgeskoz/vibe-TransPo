@@ -11,7 +11,7 @@ interface DriverBottomSheetProps {
   onLogout?: () => void;
 }
 
-const DriverBottomSheetComponent = ({ onLogout }: DriverBottomSheetProps, ref: any) => {
+export function DriverBottomSheet({ onLogout }: DriverBottomSheetProps) {
   const { language } = useTranslation();
   const setUserMode = useAppStore((s) => s.setUserMode);
   const todayEarnings = useAppStore((s) => s.todayEarnings);
@@ -25,7 +25,6 @@ const DriverBottomSheetComponent = ({ onLogout }: DriverBottomSheetProps, ref: a
 
   return (
     <BottomSheet
-      ref={ref}
       snapPoints={snapPoints}
       handleIndicatorStyle={{ backgroundColor: '#fff', height: 4, width: 40 }}
       backgroundStyle={{ backgroundColor: 'transparent' }}
@@ -167,7 +166,4 @@ const DriverBottomSheetComponent = ({ onLogout }: DriverBottomSheetProps, ref: a
       </BlurView>
     </BottomSheet>
   );
-};
-
-export const DriverBottomSheet = React.forwardRef(DriverBottomSheetComponent);
-DriverBottomSheet.displayName = 'DriverBottomSheet';
+}
