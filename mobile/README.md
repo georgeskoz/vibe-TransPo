@@ -1,4 +1,4 @@
-# TransPo (QuébecTaxi) - Taxi & Delivery App
+# TransPo - Taxi & Delivery App
 
 A comprehensive taxi, courier, and food delivery app designed for Quebec with full compliance to MTQ (Ministère des Transports du Québec) 2026 regulations.
 

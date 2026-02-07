@@ -63,7 +63,7 @@ export default function HomeScreen() {
                 <Text className="text-gray-400 text-sm">
                   {language === 'fr' ? 'Bonjour' : 'Hello'}
                 </Text>
-                <Text className="text-white text-2xl font-bold">QuébecTaxi</Text>
+                <Text className="text-white text-2xl font-bold">TransPo</Text>
               </View>
               <Pressable
                 onPress={() => setUserMode('driver')}
