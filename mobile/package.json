@@ -82,6 +82,7 @@
     "expo-location": "~18.1.4",
     "expo-mail-composer": "~14.1.4",
     "expo-manifests": "~0.16.4",
+    "expo-maps": "^0.12.10",
     "expo-media-library": "~17.1.6",
     "expo-mesh-gradient": "0.3.4",
     "expo-network": "~7.1.5",

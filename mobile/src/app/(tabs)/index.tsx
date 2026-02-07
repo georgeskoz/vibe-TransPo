@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { cn } from '@/lib/cn';
 import { DriverBottomSheet } from '@/components/DriverBottomSheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import { GoogleMaps } from 'expo-maps';
 import * as Location from 'expo-location';
 
 const services: { type: ServiceType; icon: any; gradient: [string, string] }[] = [
@@ -451,24 +451,16 @@ function DriverHomeScreen() {
       <View className="flex-1 bg-slate-300">
         {/* Real Google Map */}
         {location ? (
-          <MapView
-            provider={PROVIDER_GOOGLE}
+          <GoogleMaps.View
             style={{ flex: 1, position: 'absolute', inset: 0 }}
-            initialRegion={location}
-            showsUserLocation={true}
-            followsUserLocation={true}
-            zoomControlEnabled={true}
-            pitchEnabled={false}
-          >
-            {/* Driver marker at center */}
-            <Marker
-              coordinate={{
+            cameraPosition={{
+              coordinates: {
                 latitude: location.latitude,
                 longitude: location.longitude,
-              }}
-              title={language === 'fr' ? 'Ma position' : 'My location'}
-            />
-          </MapView>
+              },
+              zoom: 15,
+            }}
+          />
         ) : (
           <LinearGradient
             colors={['#b8dfe8', '#a3d5e0', '#8dcad8']}
