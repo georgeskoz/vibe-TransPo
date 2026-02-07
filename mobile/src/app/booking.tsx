@@ -483,7 +483,7 @@ export default function BookingScreen() {
                 >
                   <Car size={24} color="#000" />
                   <Text className="text-black text-lg font-bold ml-3">
-                    {t('bookRide')} • {finalFare ? formatCurrency(finalFare.total, language) : ''}
+                    {t('bookRide')} {finalFare && `• ${formatCurrency(finalFare.total, language)}`}
                   </Text>
                 </LinearGradient>
               </Pressable>
