@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, TextInput, Image, Modal } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { MapPin, Search, Car, Package, UtensilsCrossed, ChevronRight, Clock, Star, Zap, Phone, X } from 'lucide-react-native';
+import { MapPin, Search, Car, Package, UtensilsCrossed, ChevronRight, Clock, Star, Zap, Phone, X, Power } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeInRight, FadeIn } from 'react-native-reanimated';
 import { useTranslation } from '@/lib/i18n';
 import { useAppStore, ServiceType } from '@/lib/store';
@@ -266,7 +266,6 @@ function DriverHomeScreen() {
     if (!showIncomingRequest || countdown === null) return;
 
     if (countdown === 0) {
-      // Request expired - send to next driver
       setPendingRequest(null);
       setShowIncomingRequest(false);
       return;
@@ -283,7 +282,6 @@ function DriverHomeScreen() {
     setShowIncomingRequest(false);
     setCountdown(20);
     setDriverStatus('busy');
-    // Here we would navigate to trip screen
   };
 
   const handleDeclineRide = () => {
@@ -296,140 +294,186 @@ function DriverHomeScreen() {
     setDriverStatus(isOnline ? 'offline' : 'online');
   };
 
+  if (!isOnline) {
+    return (
+      <View className="flex-1 bg-zinc-950">
+        <LinearGradient
+          colors={['#1a1a2e', '#16213e', '#0f0f23']}
+          style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+        />
+
+        <SafeAreaView className="flex-1" edges={['top']}>
+          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+            <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
+              <View>
+                <Text className="text-gray-400 text-sm">
+                  {language === 'fr' ? 'Mode chauffeur' : 'Driver mode'}
+                </Text>
+                <Text className="text-white text-2xl font-bold">TransPo</Text>
+              </View>
+              <Pressable
+                onPress={() => setUserMode('rider')}
+                className="bg-white/10 px-4 py-2 rounded-full"
+              >
+                <Text className="text-amber-400 font-medium">
+                  {language === 'fr' ? 'Mode passager' : 'Rider mode'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View className="px-5 mt-6">
+              <Pressable
+                onPress={toggleOnline}
+                className="rounded-2xl p-6 items-center border bg-white/5 border-white/10"
+              >
+                <View className="w-20 h-20 rounded-full items-center justify-center mb-4 bg-gray-700">
+                  <Car size={36} color="#fff" />
+                </View>
+                <Text className="text-2xl font-bold text-gray-400">{t('offline')}</Text>
+                <Text className="text-gray-400 mt-2">
+                  {language === 'fr' ? 'Appuyez pour vous connecter' : 'Tap to go online'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View className="px-5 mt-6">
+              <Text className="text-white text-lg font-semibold mb-3">
+                {language === 'fr' ? 'Aujourd\'hui' : 'Today'}
+              </Text>
+              <View className="flex-row gap-3">
+                <View className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <Text className="text-gray-400 text-sm">{t('earnings')}</Text>
+                  <Text className="text-white text-2xl font-bold mt-1">
+                    {formatCurrency(todayEarnings, language)}
+                  </Text>
+                </View>
+                <View className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <Text className="text-gray-400 text-sm">
+                    {language === 'fr' ? 'Courses' : 'Trips'}
+                  </Text>
+                  <Text className="text-white text-2xl font-bold mt-1">0</Text>
+                </View>
+                <View className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <Text className="text-gray-400 text-sm">
+                    {language === 'fr' ? 'Heures' : 'Hours'}
+                  </Text>
+                  <Text className="text-white text-2xl font-bold mt-1">0h</Text>
+                </View>
+              </View>
+            </View>
+
+            <View className="px-5 mt-6 mb-8">
+              <Text className="text-white text-lg font-semibold mb-3">
+                {language === 'fr' ? 'Actions rapides' : 'Quick actions'}
+              </Text>
+              <View className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                <Pressable
+                  onPress={() => {
+                    if (!pendingRequest) {
+                      setPendingRequest({
+                        id: 'req_' + Date.now(),
+                        pickup: { latitude: 45.5017, longitude: -73.5673, address: '123 Rue Saint-Catherine' },
+                        destination: { latitude: 45.4950, longitude: -73.5732, address: '456 Rue de Bleury' },
+                        estimatedFare: { baseFare: 3.5, distanceFare: 5.7, waitingFare: 0, airportSurcharge: 0, regulatoryFee: 0.9, subtotal: 10.1, gst: 0.5, qst: 1.0, totalTaxes: 1.5, total: 11.6, isNightRate: false },
+                        estimatedDistance: 3,
+                        passengerName: 'Sarah M.',
+                        passengerRating: 4.8,
+                      });
+                    }
+                  }}
+                  className="flex-row items-center p-4 border-b border-white/5"
+                >
+                  <View className="w-10 h-10 bg-amber-500/20 rounded-full items-center justify-center mr-3">
+                    <Car size={20} color="#FFB800" />
+                  </View>
+                  <Text className="flex-1 text-white font-medium">{t('taxiMeter')}</Text>
+                  <ChevronRight size={20} color="#6B7280" />
+                </Pressable>
+                <Pressable className="flex-row items-center p-4 border-b border-white/5">
+                  <View className="w-10 h-10 bg-emerald-500/20 rounded-full items-center justify-center mr-3">
+                    <Star size={20} color="#10B981" />
+                  </View>
+                  <Text className="flex-1 text-white font-medium">{t('tripHistory')}</Text>
+                  <ChevronRight size={20} color="#6B7280" />
+                </Pressable>
+                <Pressable className="flex-row items-center p-4">
+                  <View className="w-10 h-10 bg-blue-500/20 rounded-full items-center justify-center mr-3">
+                    <Package size={20} color="#3B82F6" />
+                  </View>
+                  <Text className="flex-1 text-white font-medium">{t('documents')}</Text>
+                  <ChevronRight size={20} color="#6B7280" />
+                </Pressable>
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   return (
-    <View className="flex-1 bg-zinc-950">
-      <LinearGradient
-        colors={isOnline ? ['#0f2027', '#203a43', '#2c5364'] : ['#1a1a2e', '#16213e', '#0f0f23']}
-        style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
-      />
+    <View className="flex-1 bg-gray-100">
+      <View className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-150" />
 
       <SafeAreaView className="flex-1" edges={['top']}>
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
-            <View>
-              <Text className="text-gray-400 text-sm">
-                {language === 'fr' ? 'Mode chauffeur' : 'Driver mode'}
-              </Text>
-              <Text className="text-white text-2xl font-bold">TransPo</Text>
-            </View>
-            <Pressable
-              onPress={() => setUserMode('rider')}
-              className="bg-white/10 px-4 py-2 rounded-full"
-            >
-              <Text className="text-amber-400 font-medium">
-                {language === 'fr' ? 'Mode passager' : 'Rider mode'}
-              </Text>
-            </Pressable>
-          </View>
-
-          {/* Status Toggle */}
-          <View className="px-5 mt-6">
-            <Pressable
-              onPress={toggleOnline}
-              className={cn(
-                'rounded-2xl p-6 items-center border',
-                isOnline
-                  ? 'bg-emerald-500/20 border-emerald-500/30'
-                  : 'bg-white/5 border-white/10'
-              )}
-            >
-              <View className={cn(
-                'w-20 h-20 rounded-full items-center justify-center mb-4',
-                isOnline ? 'bg-emerald-500' : 'bg-gray-700'
-              )}>
-                <Car size={36} color="#fff" />
-              </View>
-              <Text className={cn(
-                'text-2xl font-bold',
-                isOnline ? 'text-emerald-400' : 'text-gray-400'
-              )}>
-                {isOnline ? t('online') : t('offline')}
-              </Text>
-              <Text className="text-gray-400 mt-2">
-                {isOnline
-                  ? (language === 'fr' ? 'Appuyez pour vous déconnecter' : 'Tap to go offline')
-                  : (language === 'fr' ? 'Appuyez pour vous connecter' : 'Tap to go online')}
-              </Text>
-            </Pressable>
-          </View>
-
-          {/* Today's Stats */}
-          <View className="px-5 mt-6">
-            <Text className="text-white text-lg font-semibold mb-3">
-              {language === 'fr' ? 'Aujourd\'hui' : 'Today'}
+        <View className="px-5 pt-4 pb-4 flex-row items-center justify-between z-10">
+          <View className="bg-black/70 backdrop-blur rounded-full px-4 py-2">
+            <Text className="text-white font-bold text-lg">
+              ${pendingRequest?.estimatedFare?.total?.toFixed(2) || todayEarnings.toFixed(2)}
             </Text>
-            <View className="flex-row gap-3">
-              <View className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4">
-                <Text className="text-gray-400 text-sm">{t('earnings')}</Text>
-                <Text className="text-white text-2xl font-bold mt-1">
-                  {formatCurrency(todayEarnings, language)}
-                </Text>
-              </View>
-              <View className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4">
-                <Text className="text-gray-400 text-sm">
-                  {language === 'fr' ? 'Courses' : 'Trips'}
-                </Text>
-                <Text className="text-white text-2xl font-bold mt-1">0</Text>
-              </View>
-              <View className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4">
-                <Text className="text-gray-400 text-sm">
-                  {language === 'fr' ? 'Heures' : 'Hours'}
-                </Text>
-                <Text className="text-white text-2xl font-bold mt-1">0h</Text>
-              </View>
-            </View>
           </View>
 
-          {/* Quick Actions */}
-          <View className="px-5 mt-6 mb-8">
-            <Text className="text-white text-lg font-semibold mb-3">
-              {language === 'fr' ? 'Actions rapides' : 'Quick actions'}
+          <View className="flex-row items-center gap-2">
+            <View className="w-3 h-3 rounded-full bg-emerald-500" />
+            <Text className="text-gray-700 text-sm font-medium">
+              {language === 'fr' ? 'En ligne' : 'You\'re online'}
             </Text>
-            <View className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-              <Pressable
-                onPress={() => {
-                  // Simulate incoming request for demo
-                  if (!pendingRequest) {
-                    setPendingRequest({
-                      id: 'req_' + Date.now(),
-                      pickup: { latitude: 45.5017, longitude: -73.5673, address: '123 Rue Saint-Catherine' },
-                      destination: { latitude: 45.4950, longitude: -73.5732, address: '456 Rue de Bleury' },
-                      estimatedFare: { baseFare: 3.5, distanceFare: 5.7, waitingFare: 0, airportSurcharge: 0, regulatoryFee: 0.9, subtotal: 10.1, gst: 0.5, qst: 1.0, totalTaxes: 1.5, total: 11.6, isNightRate: false },
-                      estimatedDistance: 3,
-                      passengerName: 'Sarah M.',
-                      passengerRating: 4.8,
-                    });
-                  }
-                }}
-                className="flex-row items-center p-4 border-b border-white/5"
-              >
-                <View className="w-10 h-10 bg-amber-500/20 rounded-full items-center justify-center mr-3">
-                  <Car size={20} color="#FFB800" />
-                </View>
-                <Text className="flex-1 text-white font-medium">{t('taxiMeter')}</Text>
-                <ChevronRight size={20} color="#6B7280" />
-              </Pressable>
-              <Pressable className="flex-row items-center p-4 border-b border-white/5">
-                <View className="w-10 h-10 bg-emerald-500/20 rounded-full items-center justify-center mr-3">
-                  <Star size={20} color="#10B981" />
-                </View>
-                <Text className="flex-1 text-white font-medium">{t('tripHistory')}</Text>
-                <ChevronRight size={20} color="#6B7280" />
-              </Pressable>
-              <Pressable className="flex-row items-center p-4">
-                <View className="w-10 h-10 bg-blue-500/20 rounded-full items-center justify-center mr-3">
-                  <Package size={20} color="#3B82F6" />
-                </View>
-                <Text className="flex-1 text-white font-medium">{t('documents')}</Text>
-                <ChevronRight size={20} color="#6B7280" />
-              </Pressable>
-            </View>
           </View>
-        </ScrollView>
+
+          <Pressable
+            onPress={() => setUserMode('rider')}
+            className="w-10 h-10 bg-white rounded-full items-center justify-center"
+          >
+            <Text className="text-black text-lg">☰</Text>
+          </Pressable>
+        </View>
+
+        <View className="absolute inset-0 items-center justify-center z-5 pointer-events-none">
+          <View className="w-12 h-12 bg-black rounded-full border-4 border-white shadow-lg items-center justify-center">
+            <Car size={24} color="#fff" />
+          </View>
+          <View className="w-16 h-16 border-2 border-white/40 rounded-full absolute" />
+        </View>
+
+        <View className="absolute bottom-10 right-5 z-10 gap-3">
+          <Pressable
+            onPress={() => {
+              if (!pendingRequest) {
+                setPendingRequest({
+                  id: 'req_' + Date.now(),
+                  pickup: { latitude: 45.5017, longitude: -73.5673, address: '123 Rue Saint-Catherine' },
+                  destination: { latitude: 45.4950, longitude: -73.5732, address: '456 Rue de Bleury' },
+                  estimatedFare: { baseFare: 3.5, distanceFare: 5.7, waitingFare: 0, airportSurcharge: 0, regulatoryFee: 0.9, subtotal: 10.1, gst: 0.5, qst: 1.0, totalTaxes: 1.5, total: 11.6, isNightRate: false },
+                  estimatedDistance: 3,
+                  passengerName: 'Sarah M.',
+                  passengerRating: 4.8,
+                });
+              }
+            }}
+            className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center"
+          >
+            <Search size={22} color="#000" />
+          </Pressable>
+
+          <Pressable
+            onPress={toggleOnline}
+            className="w-12 h-12 bg-red-500 rounded-full shadow-lg items-center justify-center"
+          >
+            <Power size={22} color="#fff" />
+          </Pressable>
+        </View>
       </SafeAreaView>
 
-      {/* Incoming Ride Request Modal */}
       {showIncomingRequest && pendingRequest && (
         <Modal transparent animationType="fade">
           <View className="flex-1 bg-black/50">
@@ -439,7 +483,6 @@ function DriverHomeScreen() {
             >
               <BlurView intensity={90} className="absolute inset-0" />
               <View className="bg-zinc-900 rounded-t-3xl p-6 pb-8">
-                {/* Close button */}
                 <View className="flex-row justify-between items-center mb-6">
                   <Text className="text-white text-xl font-bold">
                     {language === 'fr' ? 'Nouvelle course' : 'New ride'}
@@ -451,7 +494,6 @@ function DriverHomeScreen() {
                   </Pressable>
                 </View>
 
-                {/* Countdown Timer */}
                 <View className="items-center mb-8">
                   <View className="w-24 h-24 rounded-full bg-amber-500/20 border-2 border-amber-500 items-center justify-center mb-4">
                     <Text className="text-amber-400 text-5xl font-bold">{countdown}</Text>
@@ -461,7 +503,6 @@ function DriverHomeScreen() {
                   </Text>
                 </View>
 
-                {/* Passenger Info */}
                 <View className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-6">
                   <View className="flex-row items-center mb-4">
                     <View className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full items-center justify-center mr-4">
@@ -476,7 +517,6 @@ function DriverHomeScreen() {
                     </View>
                   </View>
 
-                  {/* Route Info */}
                   <View className="space-y-3">
                     <View className="flex-row items-start">
                       <View className="w-6 h-6 bg-emerald-500/20 rounded-full items-center justify-center mr-3 mt-1">
@@ -508,7 +548,6 @@ function DriverHomeScreen() {
                   </View>
                 </View>
 
-                {/* Trip Details */}
                 <View className="flex-row gap-3 mb-6">
                   <View className="flex-1 bg-white/5 border border-white/10 rounded-xl p-3">
                     <Text className="text-gray-400 text-xs mb-1">
@@ -528,7 +567,6 @@ function DriverHomeScreen() {
                   </View>
                 </View>
 
-                {/* Action Buttons */}
                 <View className="flex-row gap-3">
                   <Pressable
                     onPress={handleDeclineRide}
