@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "vibecode",
-    "slug": "vibecode",
-    "scheme": "vibecode",
+    "name": "TransPo",
+    "slug": "transpo",
+    "scheme": "transpo",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
