@@ -271,7 +271,7 @@ function DriverHomeScreen() {
               <Text className="text-gray-400 text-sm">
                 {language === 'fr' ? 'Mode chauffeur' : 'Driver mode'}
               </Text>
-              <Text className="text-white text-2xl font-bold">QuébecTaxi</Text>
+              <Text className="text-white text-2xl font-bold">TransPo</Text>
             </View>
             <Pressable
               onPress={() => setUserMode('rider')}
