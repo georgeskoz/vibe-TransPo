@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Pressable, TextInput, Image, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { MapPin, Search, Car, Package, UtensilsCrossed, ChevronRight, Clock, Star, Zap } from 'lucide-react-native';
-import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
+import { MapPin, Search, Car, Package, UtensilsCrossed, ChevronRight, Clock, Star, Zap, Phone, X } from 'lucide-react-native';
+import Animated, { FadeInDown, FadeInRight, FadeIn } from 'react-native-reanimated';
 import { useTranslation } from '@/lib/i18n';
 import { useAppStore, ServiceType } from '@/lib/store';
 import { formatCurrency, estimateFare } from '@/lib/quebec-taxi';
@@ -249,8 +249,48 @@ function DriverHomeScreen() {
   const setUserMode = useAppStore((s) => s.setUserMode);
   const todayEarnings = useAppStore((s) => s.todayEarnings);
   const pendingRequest = useAppStore((s) => s.pendingRequest);
+  const setPendingRequest = useAppStore((s) => s.setPendingRequest);
 
   const isOnline = driverStatus === 'online';
+  const [showIncomingRequest, setShowIncomingRequest] = useState(!!pendingRequest);
+  const [countdown, setCountdown] = useState(20);
+
+  useEffect(() => {
+    if (pendingRequest) {
+      setShowIncomingRequest(true);
+      setCountdown(20);
+    }
+  }, [pendingRequest]);
+
+  useEffect(() => {
+    if (!showIncomingRequest || countdown === null) return;
+
+    if (countdown === 0) {
+      // Request expired - send to next driver
+      setPendingRequest(null);
+      setShowIncomingRequest(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [countdown, showIncomingRequest]);
+
+  const handleAcceptRide = () => {
+    setShowIncomingRequest(false);
+    setCountdown(20);
+    setDriverStatus('busy');
+    // Here we would navigate to trip screen
+  };
+
+  const handleDeclineRide = () => {
+    setPendingRequest(null);
+    setShowIncomingRequest(false);
+    setCountdown(20);
+  };
 
   const toggleOnline = () => {
     setDriverStatus(isOnline ? 'offline' : 'online');
@@ -347,7 +387,23 @@ function DriverHomeScreen() {
               {language === 'fr' ? 'Actions rapides' : 'Quick actions'}
             </Text>
             <View className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-              <Pressable className="flex-row items-center p-4 border-b border-white/5">
+              <Pressable
+                onPress={() => {
+                  // Simulate incoming request for demo
+                  if (!pendingRequest) {
+                    setPendingRequest({
+                      id: 'req_' + Date.now(),
+                      pickup: { latitude: 45.5017, longitude: -73.5673, address: '123 Rue Saint-Catherine' },
+                      destination: { latitude: 45.4950, longitude: -73.5732, address: '456 Rue de Bleury' },
+                      estimatedFare: { baseFare: 3.5, distanceFare: 5.7, waitingFare: 0, airportSurcharge: 0, regulatoryFee: 0.9, subtotal: 10.1, gst: 0.5, qst: 1.0, totalTaxes: 1.5, total: 11.6, isNightRate: false },
+                      estimatedDistance: 3,
+                      passengerName: 'Sarah M.',
+                      passengerRating: 4.8,
+                    });
+                  }
+                }}
+                className="flex-row items-center p-4 border-b border-white/5"
+              >
                 <View className="w-10 h-10 bg-amber-500/20 rounded-full items-center justify-center mr-3">
                   <Car size={20} color="#FFB800" />
                 </View>
@@ -372,6 +428,133 @@ function DriverHomeScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* Incoming Ride Request Modal */}
+      {showIncomingRequest && pendingRequest && (
+        <Modal transparent animationType="fade">
+          <View className="flex-1 bg-black/50">
+            <Animated.View
+              entering={FadeIn.duration(300)}
+              className="flex-1 justify-end"
+            >
+              <BlurView intensity={90} className="absolute inset-0" />
+              <View className="bg-zinc-900 rounded-t-3xl p-6 pb-8">
+                {/* Close button */}
+                <View className="flex-row justify-between items-center mb-6">
+                  <Text className="text-white text-xl font-bold">
+                    {language === 'fr' ? 'Nouvelle course' : 'New ride'}
+                  </Text>
+                  <Pressable onPress={handleDeclineRide}>
+                    <View className="w-8 h-8 bg-white/10 rounded-full items-center justify-center">
+                      <X size={18} color="#fff" />
+                    </View>
+                  </Pressable>
+                </View>
+
+                {/* Countdown Timer */}
+                <View className="items-center mb-8">
+                  <View className="w-24 h-24 rounded-full bg-amber-500/20 border-2 border-amber-500 items-center justify-center mb-4">
+                    <Text className="text-amber-400 text-5xl font-bold">{countdown}</Text>
+                  </View>
+                  <Text className="text-gray-400 text-sm">
+                    {language === 'fr' ? 'secondes avant refus' : 'seconds before decline'}
+                  </Text>
+                </View>
+
+                {/* Passenger Info */}
+                <View className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-6">
+                  <View className="flex-row items-center mb-4">
+                    <View className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full items-center justify-center mr-4">
+                      <Text className="text-white text-lg font-bold">S</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-white font-semibold">{pendingRequest.passengerName}</Text>
+                      <View className="flex-row items-center mt-1">
+                        <Star size={14} color="#FFB800" fill="#FFB800" />
+                        <Text className="text-gray-400 text-xs ml-1">{pendingRequest.passengerRating}</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Route Info */}
+                  <View className="space-y-3">
+                    <View className="flex-row items-start">
+                      <View className="w-6 h-6 bg-emerald-500/20 rounded-full items-center justify-center mr-3 mt-1">
+                        <MapPin size={12} color="#10B981" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-gray-400 text-xs mb-1">
+                          {language === 'fr' ? 'Départ' : 'Pickup'}
+                        </Text>
+                        <Text className="text-white text-sm font-medium">
+                          {pendingRequest.pickup.address}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row items-start">
+                      <View className="w-6 h-6 bg-red-500/20 rounded-full items-center justify-center mr-3 mt-1">
+                        <MapPin size={12} color="#EF4444" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-gray-400 text-xs mb-1">
+                          {language === 'fr' ? 'Destination' : 'Dropoff'}
+                        </Text>
+                        <Text className="text-white text-sm font-medium">
+                          {pendingRequest.destination.address}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Trip Details */}
+                <View className="flex-row gap-3 mb-6">
+                  <View className="flex-1 bg-white/5 border border-white/10 rounded-xl p-3">
+                    <Text className="text-gray-400 text-xs mb-1">
+                      {language === 'fr' ? 'Distance' : 'Distance'}
+                    </Text>
+                    <Text className="text-white text-lg font-bold">
+                      {pendingRequest.estimatedDistance} km
+                    </Text>
+                  </View>
+                  <View className="flex-1 bg-white/5 border border-white/10 rounded-xl p-3">
+                    <Text className="text-gray-400 text-xs mb-1">
+                      {language === 'fr' ? 'Tarif estimé' : 'Est. fare'}
+                    </Text>
+                    <Text className="text-amber-400 text-lg font-bold">
+                      ${pendingRequest.estimatedFare.total.toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View className="flex-row gap-3">
+                  <Pressable
+                    onPress={handleDeclineRide}
+                    className="flex-1 bg-white/10 border border-white/20 rounded-xl py-4 items-center"
+                  >
+                    <Text className="text-gray-300 font-semibold">
+                      {language === 'fr' ? 'Refuser' : 'Decline'}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleAcceptRide}
+                    className="flex-1 bg-emerald-500 rounded-xl py-4 items-center"
+                  >
+                    <View className="flex-row items-center">
+                      <Phone size={18} color="#fff" strokeWidth={2.5} />
+                      <Text className="text-white font-bold ml-2">
+                        {language === 'fr' ? 'Accepter' : 'Accept'}
+                      </Text>
+                    </View>
+                  </Pressable>
+                </View>
+              </View>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
