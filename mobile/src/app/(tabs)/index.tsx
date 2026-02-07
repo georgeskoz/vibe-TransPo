@@ -12,8 +12,6 @@ import { useRouter } from 'expo-router';
 import { cn } from '@/lib/cn';
 import { DriverBottomSheet } from '@/components/DriverBottomSheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { GoogleMaps } from 'expo-maps';
-import * as Location from 'expo-location';
 
 const services: { type: ServiceType; icon: any; gradient: [string, string] }[] = [
   { type: 'taxi', icon: Car, gradient: ['#FFB800', '#FF8C00'] },
@@ -256,39 +254,8 @@ function DriverHomeScreen() {
   const setPendingRequest = useAppStore((s) => s.setPendingRequest);
 
   const isOnline = driverStatus === 'online';
-  const [location, setLocation] = useState<any>(null);
   const [showIncomingRequest, setShowIncomingRequest] = useState(!!pendingRequest);
   const [countdown, setCountdown] = useState(20);
-
-  // Request location permission and get current position
-  useEffect(() => {
-    if (!isOnline) return;
-
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert(
-            language === 'fr' ? 'Permission refusée' : 'Permission denied',
-            language === 'fr'
-              ? 'L\'accès à la localisation est nécessaire'
-              : 'Location access is required'
-          );
-          return;
-        }
-
-        const loc = await Location.getCurrentPositionAsync({});
-        setLocation({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
-        });
-      } catch (error) {
-        console.log('Error getting location:', error);
-      }
-    })();
-  }, [isOnline, language]);
 
   useEffect(() => {
     if (pendingRequest) {
@@ -449,26 +416,52 @@ function DriverHomeScreen() {
   return (
     <GestureHandlerRootView className="flex-1">
       <View className="flex-1 bg-slate-300">
-        {/* Real Google Map */}
-        {location ? (
-          <GoogleMaps.View
-            style={{ flex: 1, position: 'absolute', inset: 0 }}
-            cameraPosition={{
-              coordinates: {
-                latitude: location.latitude,
-                longitude: location.longitude,
-              },
-              zoom: 15,
-            }}
-          />
-        ) : (
+        {/* Map-like Background */}
+        <View className="absolute inset-0">
           <LinearGradient
             colors={['#b8dfe8', '#a3d5e0', '#8dcad8']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ flex: 1 }}
           />
-        )}
+
+          {/* Street grid pattern */}
+          <View className="absolute inset-0">
+            {/* Horizontal streets */}
+            {[0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780].map((offset) => (
+              <View
+                key={`h-${offset}`}
+                style={{
+                  position: 'absolute',
+                  top: offset,
+                  left: 0,
+                  right: 0,
+                  height: 2,
+                  backgroundColor: 'rgba(255, 255, 255, 0.35)',
+                }}
+              />
+            ))}
+            {/* Vertical streets */}
+            {[0, 50, 100, 150, 200, 250, 300, 350, 400].map((offset) => (
+              <View
+                key={`v-${offset}`}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 0,
+                  left: offset,
+                  width: 2,
+                  backgroundColor: 'rgba(255, 255, 255, 0.35)',
+                }}
+              />
+            ))}
+          </View>
+
+          {/* Green areas (parks) */}
+          <View className="absolute top-1/4 left-1/4 w-24 h-24 bg-green-400/35 rounded-full blur-xl" />
+          <View className="absolute top-1/3 right-1/4 w-32 h-32 bg-emerald-400/30 rounded-full blur-xl" />
+          <View className="absolute bottom-1/4 left-1/3 w-28 h-28 bg-teal-400/25 rounded-full blur-xl" />
+        </View>
 
         <SafeAreaView className="flex-1" edges={['top']}>
           {/* Driver Location Indicator */}
