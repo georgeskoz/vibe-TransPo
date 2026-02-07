@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Image, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,9 @@ import { useAppStore, ServiceType } from '@/lib/store';
 import { formatCurrency, estimateFare } from '@/lib/quebec-taxi';
 import { useRouter } from 'expo-router';
 import { cn } from '@/lib/cn';
+import { DriverBottomSheet } from '@/components/DriverBottomSheet';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import BottomSheet from '@gorhom/bottom-sheet';
 
 const services: { type: ServiceType; icon: any; gradient: [string, string] }[] = [
   { type: 'taxi', icon: Car, gradient: ['#FFB800', '#FF8C00'] },
@@ -250,6 +253,7 @@ function DriverHomeScreen() {
   const todayEarnings = useAppStore((s) => s.todayEarnings);
   const pendingRequest = useAppStore((s) => s.pendingRequest);
   const setPendingRequest = useAppStore((s) => s.setPendingRequest);
+  const bottomSheetRef = useRef<BottomSheet>(null);
 
   const isOnline = driverStatus === 'online';
   const [showIncomingRequest, setShowIncomingRequest] = useState(!!pendingRequest);
@@ -412,187 +416,171 @@ function DriverHomeScreen() {
   }
 
   return (
-    <View className="flex-1 bg-gray-100">
-      <View className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-150" />
+    <GestureHandlerRootView className="flex-1 bg-gray-100">
+      <View className="flex-1 bg-gray-100">
+        <View className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-150" />
 
-      <SafeAreaView className="flex-1" edges={['top']}>
-        <View className="px-5 pt-4 pb-4 flex-row items-center justify-between z-10">
-          <View className="bg-black/70 backdrop-blur rounded-full px-4 py-2">
-            <Text className="text-white font-bold text-lg">
-              ${pendingRequest?.estimatedFare?.total?.toFixed(2) || todayEarnings.toFixed(2)}
-            </Text>
+        <SafeAreaView className="flex-1" edges={['top']}>
+          {/* Driver Location Indicator */}
+          <View className="absolute inset-0 items-center justify-center z-5 pointer-events-none">
+            <View className="w-12 h-12 bg-black rounded-full border-4 border-white shadow-lg items-center justify-center">
+              <Car size={24} color="#fff" />
+            </View>
+            <View className="w-16 h-16 border-2 border-white/40 rounded-full absolute" />
           </View>
 
-          <View className="flex-row items-center gap-2">
-            <View className="w-3 h-3 rounded-full bg-emerald-500" />
-            <Text className="text-gray-700 text-sm font-medium">
-              {language === 'fr' ? 'En ligne' : 'You\'re online'}
-            </Text>
-          </View>
-
-          <Pressable
-            onPress={() => setUserMode('rider')}
-            className="w-10 h-10 bg-white rounded-full items-center justify-center"
-          >
-            <Text className="text-black text-lg">☰</Text>
-          </Pressable>
-        </View>
-
-        <View className="absolute inset-0 items-center justify-center z-5 pointer-events-none">
-          <View className="w-12 h-12 bg-black rounded-full border-4 border-white shadow-lg items-center justify-center">
-            <Car size={24} color="#fff" />
-          </View>
-          <View className="w-16 h-16 border-2 border-white/40 rounded-full absolute" />
-        </View>
-
-        <View className="absolute bottom-10 right-5 z-10 gap-3">
-          <Pressable
-            onPress={() => {
-              if (!pendingRequest) {
-                setPendingRequest({
-                  id: 'req_' + Date.now(),
-                  pickup: { latitude: 45.5017, longitude: -73.5673, address: '123 Rue Saint-Catherine' },
-                  destination: { latitude: 45.4950, longitude: -73.5732, address: '456 Rue de Bleury' },
-                  estimatedFare: { baseFare: 3.5, distanceFare: 5.7, waitingFare: 0, airportSurcharge: 0, regulatoryFee: 0.9, subtotal: 10.1, gst: 0.5, qst: 1.0, totalTaxes: 1.5, total: 11.6, isNightRate: false },
-                  estimatedDistance: 3,
-                  passengerName: 'Sarah M.',
-                  passengerRating: 4.8,
-                });
-              }
-            }}
-            className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center"
-          >
-            <Search size={22} color="#000" />
-          </Pressable>
-
-          <Pressable
-            onPress={toggleOnline}
-            className="w-12 h-12 bg-red-500 rounded-full shadow-lg items-center justify-center"
-          >
-            <Power size={22} color="#fff" />
-          </Pressable>
-        </View>
-      </SafeAreaView>
-
-      {showIncomingRequest && pendingRequest && (
-        <Modal transparent animationType="fade">
-          <View className="flex-1 bg-black/50">
-            <Animated.View
-              entering={FadeIn.duration(300)}
-              className="flex-1 justify-end"
+          {/* Floating Action Button - Simulate Ride Request */}
+          <View className="absolute bottom-32 right-5 z-10">
+            <Pressable
+              onPress={() => {
+                if (!pendingRequest) {
+                  setPendingRequest({
+                    id: 'req_' + Date.now(),
+                    pickup: { latitude: 45.5017, longitude: -73.5673, address: '123 Rue Saint-Catherine' },
+                    destination: { latitude: 45.4950, longitude: -73.5732, address: '456 Rue de Bleury' },
+                    estimatedFare: { baseFare: 3.5, distanceFare: 5.7, waitingFare: 0, airportSurcharge: 0, regulatoryFee: 0.9, subtotal: 10.1, gst: 0.5, qst: 1.0, totalTaxes: 1.5, total: 11.6, isNightRate: false },
+                    estimatedDistance: 3,
+                    passengerName: 'Sarah M.',
+                    passengerRating: 4.8,
+                  });
+                }
+              }}
+              className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center"
             >
-              <BlurView intensity={90} className="absolute inset-0" />
-              <View className="bg-zinc-900 rounded-t-3xl p-6 pb-8">
-                <View className="flex-row justify-between items-center mb-6">
-                  <Text className="text-white text-xl font-bold">
-                    {language === 'fr' ? 'Nouvelle course' : 'New ride'}
-                  </Text>
-                  <Pressable onPress={handleDeclineRide}>
-                    <View className="w-8 h-8 bg-white/10 rounded-full items-center justify-center">
-                      <X size={18} color="#fff" />
-                    </View>
-                  </Pressable>
-                </View>
+              <Search size={22} color="#000" />
+            </Pressable>
+          </View>
+        </SafeAreaView>
 
-                <View className="items-center mb-8">
-                  <View className="w-24 h-24 rounded-full bg-amber-500/20 border-2 border-amber-500 items-center justify-center mb-4">
-                    <Text className="text-amber-400 text-5xl font-bold">{countdown}</Text>
-                  </View>
-                  <Text className="text-gray-400 text-sm">
-                    {language === 'fr' ? 'secondes avant refus' : 'seconds before decline'}
-                  </Text>
-                </View>
+        {/* Bottom Sheet for Driver Menu */}
+        <DriverBottomSheet
+          ref={bottomSheetRef}
+          onLogout={() => {
+            setDriverStatus('offline');
+          }}
+        />
 
-                <View className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-6">
-                  <View className="flex-row items-center mb-4">
-                    <View className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full items-center justify-center mr-4">
-                      <Text className="text-white text-lg font-bold">S</Text>
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-white font-semibold">{pendingRequest.passengerName}</Text>
-                      <View className="flex-row items-center mt-1">
-                        <Star size={14} color="#FFB800" fill="#FFB800" />
-                        <Text className="text-gray-400 text-xs ml-1">{pendingRequest.passengerRating}</Text>
+        {/* Incoming Ride Request Modal */}
+        {showIncomingRequest && pendingRequest && (
+          <Modal transparent animationType="fade">
+            <View className="flex-1 bg-black/50">
+              <Animated.View
+                entering={FadeIn.duration(300)}
+                className="flex-1 justify-end"
+              >
+                <BlurView intensity={90} className="absolute inset-0" />
+                <View className="bg-zinc-900 rounded-t-3xl p-6 pb-8">
+                  <View className="flex-row justify-between items-center mb-6">
+                    <Text className="text-white text-xl font-bold">
+                      {language === 'fr' ? 'Nouvelle course' : 'New ride'}
+                    </Text>
+                    <Pressable onPress={handleDeclineRide}>
+                      <View className="w-8 h-8 bg-white/10 rounded-full items-center justify-center">
+                        <X size={18} color="#fff" />
                       </View>
-                    </View>
+                    </Pressable>
                   </View>
 
-                  <View className="space-y-3">
-                    <View className="flex-row items-start">
-                      <View className="w-6 h-6 bg-emerald-500/20 rounded-full items-center justify-center mr-3 mt-1">
-                        <MapPin size={12} color="#10B981" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-gray-400 text-xs mb-1">
-                          {language === 'fr' ? 'Départ' : 'Pickup'}
-                        </Text>
-                        <Text className="text-white text-sm font-medium">
-                          {pendingRequest.pickup.address}
-                        </Text>
-                      </View>
+                  <View className="items-center mb-8">
+                    <View className="w-24 h-24 rounded-full bg-amber-500/20 border-2 border-amber-500 items-center justify-center mb-4">
+                      <Text className="text-amber-400 text-5xl font-bold">{countdown}</Text>
                     </View>
+                    <Text className="text-gray-400 text-sm">
+                      {language === 'fr' ? 'secondes avant refus' : 'seconds before decline'}
+                    </Text>
+                  </View>
 
-                    <View className="flex-row items-start">
-                      <View className="w-6 h-6 bg-red-500/20 rounded-full items-center justify-center mr-3 mt-1">
-                        <MapPin size={12} color="#EF4444" />
+                  <View className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-6">
+                    <View className="flex-row items-center mb-4">
+                      <View className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full items-center justify-center mr-4">
+                        <Text className="text-white text-lg font-bold">S</Text>
                       </View>
                       <View className="flex-1">
-                        <Text className="text-gray-400 text-xs mb-1">
-                          {language === 'fr' ? 'Destination' : 'Dropoff'}
-                        </Text>
-                        <Text className="text-white text-sm font-medium">
-                          {pendingRequest.destination.address}
-                        </Text>
+                        <Text className="text-white font-semibold">{pendingRequest.passengerName}</Text>
+                        <View className="flex-row items-center mt-1">
+                          <Star size={14} color="#FFB800" fill="#FFB800" />
+                          <Text className="text-gray-400 text-xs ml-1">{pendingRequest.passengerRating}</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View className="space-y-3">
+                      <View className="flex-row items-start">
+                        <View className="w-6 h-6 bg-emerald-500/20 rounded-full items-center justify-center mr-3 mt-1">
+                          <MapPin size={12} color="#10B981" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-gray-400 text-xs mb-1">
+                            {language === 'fr' ? 'Départ' : 'Pickup'}
+                          </Text>
+                          <Text className="text-white text-sm font-medium">
+                            {pendingRequest.pickup.address}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View className="flex-row items-start">
+                        <View className="w-6 h-6 bg-red-500/20 rounded-full items-center justify-center mr-3 mt-1">
+                          <MapPin size={12} color="#EF4444" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-gray-400 text-xs mb-1">
+                            {language === 'fr' ? 'Destination' : 'Dropoff'}
+                          </Text>
+                          <Text className="text-white text-sm font-medium">
+                            {pendingRequest.destination.address}
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   </View>
-                </View>
 
-                <View className="flex-row gap-3 mb-6">
-                  <View className="flex-1 bg-white/5 border border-white/10 rounded-xl p-3">
-                    <Text className="text-gray-400 text-xs mb-1">
-                      {language === 'fr' ? 'Distance' : 'Distance'}
-                    </Text>
-                    <Text className="text-white text-lg font-bold">
-                      {pendingRequest.estimatedDistance} km
-                    </Text>
-                  </View>
-                  <View className="flex-1 bg-white/5 border border-white/10 rounded-xl p-3">
-                    <Text className="text-gray-400 text-xs mb-1">
-                      {language === 'fr' ? 'Tarif estimé' : 'Est. fare'}
-                    </Text>
-                    <Text className="text-amber-400 text-lg font-bold">
-                      ${pendingRequest.estimatedFare.total.toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
-
-                <View className="flex-row gap-3">
-                  <Pressable
-                    onPress={handleDeclineRide}
-                    className="flex-1 bg-white/10 border border-white/20 rounded-xl py-4 items-center"
-                  >
-                    <Text className="text-gray-300 font-semibold">
-                      {language === 'fr' ? 'Refuser' : 'Decline'}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={handleAcceptRide}
-                    className="flex-1 bg-emerald-500 rounded-xl py-4 items-center"
-                  >
-                    <View className="flex-row items-center">
-                      <Phone size={18} color="#fff" strokeWidth={2.5} />
-                      <Text className="text-white font-bold ml-2">
-                        {language === 'fr' ? 'Accepter' : 'Accept'}
+                  <View className="flex-row gap-3 mb-6">
+                    <View className="flex-1 bg-white/5 border border-white/10 rounded-xl p-3">
+                      <Text className="text-gray-400 text-xs mb-1">
+                        {language === 'fr' ? 'Distance' : 'Distance'}
+                      </Text>
+                      <Text className="text-white text-lg font-bold">
+                        {pendingRequest.estimatedDistance} km
                       </Text>
                     </View>
-                  </Pressable>
+                    <View className="flex-1 bg-white/5 border border-white/10 rounded-xl p-3">
+                      <Text className="text-gray-400 text-xs mb-1">
+                        {language === 'fr' ? 'Tarif estimé' : 'Est. fare'}
+                      </Text>
+                      <Text className="text-amber-400 text-lg font-bold">
+                        ${pendingRequest.estimatedFare.total.toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View className="flex-row gap-3">
+                    <Pressable
+                      onPress={handleDeclineRide}
+                      className="flex-1 bg-white/10 border border-white/20 rounded-xl py-4 items-center"
+                    >
+                      <Text className="text-gray-300 font-semibold">
+                        {language === 'fr' ? 'Refuser' : 'Decline'}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleAcceptRide}
+                      className="flex-1 bg-emerald-500 rounded-xl py-4 items-center"
+                    >
+                      <View className="flex-row items-center">
+                        <Phone size={18} color="#fff" strokeWidth={2.5} />
+                        <Text className="text-white font-bold ml-2">
+                          {language === 'fr' ? 'Accepter' : 'Accept'}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  </View>
                 </View>
-              </View>
-            </Animated.View>
-          </View>
-        </Modal>
-      )}
-    </View>
+              </Animated.View>
+            </View>
+          </Modal>
+        )}
+      </View>
+    </GestureHandlerRootView>
   );
 }

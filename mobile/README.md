@@ -60,21 +60,16 @@ A comprehensive taxi, courier, and food delivery app designed for Quebec with fu
 
 ### Phase 2: Driver App
 
-- [x] Driver dashboard with stats
-- [x] Online/offline toggle
-- [x] Ride acceptance/rejection flow
-- [x] Incoming ride request modal with timer
-- [x] Earnings summary with weekly chart
-- [x] Driver ratings display
-- [x] Taxi meter (MTQ compliant)
-- [x] Day/Night rate auto-switching (5 AM - 11 PM / 11 PM - 5 AM)
-- [x] Automated GPS-based distance/waiting mode detection
-- [x] Trip type selection (App Booking / Street Hail)
-- [x] Payment screen with multiple options (Card on file, Cash, Credit Card, Apple Pay, Google Pay)
-- [x] Tip selection (0%, 10%, 15%, 20%, 25%, custom)
-- [x] Driver onboarding screens (documents, vehicle, insurance)
-- [ ] Live location broadcasting - Socket.io needed
-- [ ] Square SDK actual payment processing - API needed
+#### Driver Home Screen (Online Mode)
+- [x] Map-based interface when driver goes online
+- [x] Draggable bottom sheet menu with three snap points
+  - **Collapsed (60px)**: Shows "You're online" status with Settings & List icons
+  - **Half-Expanded (250px)**: Reveals today's earnings summary
+  - **Full-Expanded (90%)**: Full menu with Documents, History, Profile, Support, and Logout
+- [x] Blur glass effect for premium aesthetic
+- [x] Incoming ride request modal with 20-second countdown timer
+- [x] Gesture-enabled swipe up/down for bottom sheet interaction
+- [ ] Real-time location broadcasting - Socket.io needed
 
 ### Phase 3: UI/UX Components
 
