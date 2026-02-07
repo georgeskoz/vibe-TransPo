@@ -61,7 +61,8 @@ A comprehensive taxi, courier, and food delivery app designed for Quebec with fu
 ### Phase 2: Driver App
 
 #### Driver Home Screen (Online Mode)
-- [x] Map-based interface with street grid pattern and parks visualization
+- [x] Real Google Map integration with live location tracking
+- [x] Location permissions and device location access
 - [x] Draggable bottom sheet menu with three snap points
   - **Collapsed (80px)**: Shows "You're online" status with Settings & List icons
   - **Half-Expanded (260px)**: Reveals today's earnings summary
